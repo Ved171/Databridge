@@ -1,0 +1,4135 @@
+{
+  "metadata": {
+    "connector_id": "Appraisal",
+    "connector_type": "POSTGRES",
+    "db_name": "Appraisal",
+    "table_count": 99,
+    "last_updated": "2026-05-22T07:10:13.516474Z",
+    "schema_version": "1.0"
+  },
+  "tables": [
+    {
+      "name": "Location",
+      "schema": "hrms",
+      "columns": [
+        {
+          "name": "LocationId",
+          "type": "integer!"
+        },
+        {
+          "name": "LocationName",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "User",
+      "schema": "hrms",
+      "columns": [
+        {
+          "name": "UserId",
+          "type": "integer!"
+        },
+        {
+          "name": "UserName",
+          "type": "varchar!"
+        },
+        {
+          "name": "FirstName",
+          "type": "varchar!"
+        },
+        {
+          "name": "LastName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Email",
+          "type": "varchar"
+        },
+        {
+          "name": "ContactNumber",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "AssessmentResult",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "AssessmentId",
+          "type": "integer!"
+        },
+        {
+          "name": "ScheduleId",
+          "type": "integer!"
+        },
+        {
+          "name": "OverallAssessment",
+          "type": "integer!"
+        },
+        {
+          "name": "RejectReason",
+          "type": "integer"
+        },
+        {
+          "name": "FocusArea",
+          "type": "varchar"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar!"
+        },
+        {
+          "name": "TrainingNeeds",
+          "type": "varchar!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "AssignRecruiter",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "AssignRecruiterId",
+          "type": "integer!"
+        },
+        {
+          "name": "RequirementId",
+          "type": "integer!"
+        },
+        {
+          "name": "RecruiterId",
+          "type": "integer!"
+        },
+        {
+          "name": "RecruiterPosition",
+          "type": "integer!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Candidate",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "FirstName",
+          "type": "varchar!"
+        },
+        {
+          "name": "LastName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Address",
+          "type": "varchar"
+        },
+        {
+          "name": "CurrentState",
+          "type": "integer"
+        },
+        {
+          "name": "CurrentCity",
+          "type": "integer"
+        },
+        {
+          "name": "CurrentZipcode",
+          "type": "varchar"
+        },
+        {
+          "name": "IsSameAsCurrentAddr",
+          "type": "boolean"
+        },
+        {
+          "name": "PermanentAddress",
+          "type": "varchar"
+        },
+        {
+          "name": "PermanentState",
+          "type": "integer"
+        },
+        {
+          "name": "PermanentCity",
+          "type": "integer"
+        },
+        {
+          "name": "PermanentZipcode",
+          "type": "varchar"
+        },
+        {
+          "name": "PhoneNumber",
+          "type": "varchar"
+        },
+        {
+          "name": "MobileNumber",
+          "type": "varchar!"
+        },
+        {
+          "name": "AlternateMoNumber",
+          "type": "varchar"
+        },
+        {
+          "name": "SkypeId",
+          "type": "varchar"
+        },
+        {
+          "name": "Gender",
+          "type": "varchar!"
+        },
+        {
+          "name": "Birthdate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "Email",
+          "type": "varchar!"
+        },
+        {
+          "name": "PassportNumber",
+          "type": "varchar"
+        },
+        {
+          "name": "MaritalStatus",
+          "type": "boolean"
+        },
+        {
+          "name": "NumberOfChildren",
+          "type": "integer"
+        },
+        {
+          "name": "IsPhysicalDisability",
+          "type": "boolean"
+        },
+        {
+          "name": "PhysicalDisabilityDetails",
+          "type": "varchar"
+        },
+        {
+          "name": "EducationDetail",
+          "type": "varchar"
+        },
+        {
+          "name": "CurrentlyEmployed",
+          "type": "boolean"
+        },
+        {
+          "name": "CurrentCompany",
+          "type": "varchar"
+        },
+        {
+          "name": "CurrentLocation",
+          "type": "varchar"
+        },
+        {
+          "name": "IsExperiencedCandidate",
+          "type": "boolean"
+        },
+        {
+          "name": "ExperienceYear",
+          "type": "integer"
+        },
+        {
+          "name": "ExperienceMonth",
+          "type": "integer"
+        },
+        {
+          "name": "CurrentDesignation",
+          "type": "varchar"
+        },
+        {
+          "name": "ExpectedDesignation",
+          "type": "varchar"
+        },
+        {
+          "name": "PreferredLocation",
+          "type": "varchar"
+        },
+        {
+          "name": "InterviewPreferedTime",
+          "type": "varchar"
+        },
+        {
+          "name": "ReferencedBy",
+          "type": "integer"
+        },
+        {
+          "name": "ReferenceName",
+          "type": "varchar"
+        },
+        {
+          "name": "NoticePeriod",
+          "type": "integer"
+        },
+        {
+          "name": "RelocateDetails",
+          "type": "varchar"
+        },
+        {
+          "name": "TravelReadinessDuration",
+          "type": "integer"
+        },
+        {
+          "name": "TravelReadinessReason",
+          "type": "varchar"
+        },
+        {
+          "name": "CandidateSynovergeLearning",
+          "type": "varchar"
+        },
+        {
+          "name": "ProfilePath",
+          "type": "varchar"
+        },
+        {
+          "name": "RequirementId",
+          "type": "integer"
+        },
+        {
+          "name": "IsRequirementMapped",
+          "type": "boolean!"
+        },
+        {
+          "name": "HRComments",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "CandidateStatusId",
+          "type": "integer"
+        },
+        {
+          "name": "RejectionReason",
+          "type": "integer"
+        },
+        {
+          "name": "ImagePath",
+          "type": "varchar"
+        },
+        {
+          "name": "IsRejectFeedbackMailSent",
+          "type": "boolean"
+        },
+        {
+          "name": "IsDraft",
+          "type": "boolean!"
+        },
+        {
+          "name": "CandidateOption",
+          "type": "ARRAY!"
+        },
+        {
+          "name": "TechnologyId",
+          "type": "integer"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer"
+        },
+        {
+          "name": "CurrentCTC",
+          "type": "float8"
+        },
+        {
+          "name": "ExpectedCTC",
+          "type": "float8"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateEducationDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateEducationDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "DegreeCategory",
+          "type": "varchar!"
+        },
+        {
+          "name": "SchoolUniversityName",
+          "type": "varchar!"
+        },
+        {
+          "name": "StreamName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Specialization",
+          "type": "varchar"
+        },
+        {
+          "name": "Percentage",
+          "type": "varchar!"
+        },
+        {
+          "name": "YearOfPassing",
+          "type": "integer!"
+        },
+        {
+          "name": "OtherEducation",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateEducationalDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "Id",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "DegreeId",
+          "type": "integer!"
+        },
+        {
+          "name": "TotalMarks",
+          "type": "integer!"
+        },
+        {
+          "name": "ObtainedMarks",
+          "type": "integer!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateExperienceDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateExperienceDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "FromDate",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "ToDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "Location",
+          "type": "varchar"
+        },
+        {
+          "name": "CompanyName",
+          "type": "varchar!"
+        },
+        {
+          "name": "ToolsTechnologyUsed",
+          "type": "varchar"
+        },
+        {
+          "name": "Designation",
+          "type": "varchar"
+        },
+        {
+          "name": "SalaryDrawn",
+          "type": "varchar!"
+        },
+        {
+          "name": "ReportingTo",
+          "type": "varchar"
+        },
+        {
+          "name": "ReasonForLeaving",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateFamilyDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateFamilyDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "Name",
+          "type": "varchar!"
+        },
+        {
+          "name": "Relation",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsWorking",
+          "type": "boolean!"
+        },
+        {
+          "name": "CompanyName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Designation",
+          "type": "varchar!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateReferenceDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateReferenceDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "ReferenceName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Designation",
+          "type": "varchar"
+        },
+        {
+          "name": "CompanyName",
+          "type": "varchar"
+        },
+        {
+          "name": "ReferenceEmail",
+          "type": "varchar"
+        },
+        {
+          "name": "PhoneNumber",
+          "type": "varchar!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateRequirement",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateRequirementId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "RequirementId",
+          "type": "integer"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer"
+        },
+        {
+          "name": "JoiningDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "OfferedDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "HRComments",
+          "type": "varchar"
+        },
+        {
+          "name": "OfferedDesignationId",
+          "type": "integer"
+        },
+        {
+          "name": "DeclinedReason",
+          "type": "integer"
+        },
+        {
+          "name": "DropoutReason",
+          "type": "integer"
+        },
+        {
+          "name": "ReferralBonusAmount",
+          "type": "varchar"
+        },
+        {
+          "name": "ReferralBonusPaymentDate",
+          "type": "timestamptz"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateRequirementStatus",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateRequirementStatusId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "RequirementId",
+          "type": "integer!"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer"
+        },
+        {
+          "name": "Comments",
+          "type": "varchar"
+        },
+        {
+          "name": "RoundId",
+          "type": "integer"
+        },
+        {
+          "name": "RoundCount",
+          "type": "integer"
+        },
+        {
+          "name": "StatusUpdatedDate",
+          "type": "timestamptz"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateSecondarySkill",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateSkillId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "ParentSkillId",
+          "type": "integer!"
+        },
+        {
+          "name": "SkillId",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateSkill",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateSkillId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "SkillId",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateTechnologyDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateTechnologyDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "TechnologyToolsDetail",
+          "type": "varchar"
+        },
+        {
+          "name": "LastUsed",
+          "type": "varchar"
+        },
+        {
+          "name": "ExpertiseLevel",
+          "type": "varchar"
+        },
+        {
+          "name": "Rating",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateTestDetails",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateTestDetailsId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "TestName",
+          "type": "USER-DEFINED!"
+        },
+        {
+          "name": "TotalScore",
+          "type": "varchar"
+        },
+        {
+          "name": "ObtainScore",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CandidateWrittenAssessment",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "CandidateWrittenAssessmentId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "WrittenAssessmentId",
+          "type": "integer!"
+        },
+        {
+          "name": "AssessedBy",
+          "type": "integer!"
+        },
+        {
+          "name": "Actual",
+          "type": "integer!"
+        },
+        {
+          "name": "Score",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "EvaluationDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "EvaluationDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "EvaluationId",
+          "type": "integer!"
+        },
+        {
+          "name": "ScheduleId",
+          "type": "integer!"
+        },
+        {
+          "name": "BetterThan",
+          "type": "integer"
+        },
+        {
+          "name": "LessThan",
+          "type": "integer"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Group",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "GroupId",
+          "type": "integer!"
+        },
+        {
+          "name": "GroupCode",
+          "type": "varchar!"
+        },
+        {
+          "name": "GroupName",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "IsLocked",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "GroupDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "GroupDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "GroupId",
+          "type": "integer!"
+        },
+        {
+          "name": "GroupDetailCode",
+          "type": "varchar!"
+        },
+        {
+          "name": "GroupDetailName",
+          "type": "varchar!"
+        },
+        {
+          "name": "DisplaySequence",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "InterviewAssessment",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "InterviewAssessmentId",
+          "type": "integer!"
+        },
+        {
+          "name": "ScheduleId",
+          "type": "integer!"
+        },
+        {
+          "name": "RequirementAssessmentDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "Rating",
+          "type": "integer!"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar"
+        },
+        {
+          "name": "skill",
+          "type": "ARRAY!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "InterviewPanel",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "InterviewPanelId",
+          "type": "integer!"
+        },
+        {
+          "name": "TechnologyId",
+          "type": "integer"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "ARRAY!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "RoundId",
+          "type": "ARRAY!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "InterviewerPanelDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "InterviewerPanelDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "SkillId",
+          "type": "integer"
+        },
+        {
+          "name": "RoundId",
+          "type": "integer!"
+        },
+        {
+          "name": "InterviewerId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsActive",
+          "type": "boolean!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "JD",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "JDId",
+          "type": "integer!"
+        },
+        {
+          "name": "JDDetails",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "TemplateName",
+          "type": "varchar!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "JDSkillData",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "JDSkillDataId",
+          "type": "integer!"
+        },
+        {
+          "name": "JDId",
+          "type": "integer"
+        },
+        {
+          "name": "TypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "ImportanceId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "Skills",
+          "type": "ARRAY"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "LeadTime",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "LeadTimeId",
+          "type": "integer!"
+        },
+        {
+          "name": "LeadTimeSkillId",
+          "type": "integer!"
+        },
+        {
+          "name": "LeadTimeDays",
+          "type": "integer"
+        },
+        {
+          "name": "Priority",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "OtherInterviewer",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "OtherInterviewerId",
+          "type": "integer!"
+        },
+        {
+          "name": "ScheduleId",
+          "type": "integer!"
+        },
+        {
+          "name": "InterviewerId",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Page",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "Id",
+          "type": "integer!"
+        },
+        {
+          "name": "PageName",
+          "type": "varchar"
+        },
+        {
+          "name": "PageRoute",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Requirement",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "RequirementId",
+          "type": "integer!"
+        },
+        {
+          "name": "DesignationId",
+          "type": "integer!"
+        },
+        {
+          "name": "TechnologyId",
+          "type": "integer!"
+        },
+        {
+          "name": "RaisedById",
+          "type": "integer!"
+        },
+        {
+          "name": "ApprovedById",
+          "type": "integer"
+        },
+        {
+          "name": "ExperienceMin",
+          "type": "integer"
+        },
+        {
+          "name": "ExperienceMax",
+          "type": "integer"
+        },
+        {
+          "name": "LocationId",
+          "type": "integer"
+        },
+        {
+          "name": "NoOfRequirement",
+          "type": "integer!"
+        },
+        {
+          "name": "RequiredByDate",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "JD",
+          "type": "varchar!"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer!"
+        },
+        {
+          "name": "HROwnerId",
+          "type": "integer"
+        },
+        {
+          "name": "InterviewCount",
+          "type": "integer!"
+        },
+        {
+          "name": "ShortlistCount",
+          "type": "integer!"
+        },
+        {
+          "name": "IsPublic",
+          "type": "boolean!"
+        },
+        {
+          "name": "Priority",
+          "type": "integer"
+        },
+        {
+          "name": "RejectReason",
+          "type": "varchar"
+        },
+        {
+          "name": "ApprovedDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "IsDraft",
+          "type": "boolean!"
+        },
+        {
+          "name": "ProjectId",
+          "type": "integer"
+        },
+        {
+          "name": "ExistEmployeeId",
+          "type": "integer"
+        },
+        {
+          "name": "JDTemplateId",
+          "type": "integer"
+        },
+        {
+          "name": "BudgetMin",
+          "type": "integer"
+        },
+        {
+          "name": "BudgetMax",
+          "type": "integer"
+        },
+        {
+          "name": "ModeOfWork",
+          "type": "ARRAY!"
+        },
+        {
+          "name": "TAT",
+          "type": "integer"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "RequirementAssessmentDetail",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "RequirementAssessmentDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "RequirementId",
+          "type": "integer!"
+        },
+        {
+          "name": "TypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "ImportanceId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "Skill",
+          "type": "ARRAY!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "RequirementStatusLog",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "RequirementStatusLogId",
+          "type": "integer!"
+        },
+        {
+          "name": "RequirementId",
+          "type": "integer!"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Schedule",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "ScheduleId",
+          "type": "integer!"
+        },
+        {
+          "name": "CandidateRequirementId",
+          "type": "integer"
+        },
+        {
+          "name": "CandidateId",
+          "type": "integer!"
+        },
+        {
+          "name": "RoundId",
+          "type": "integer!"
+        },
+        {
+          "name": "RoundCount",
+          "type": "integer!"
+        },
+        {
+          "name": "ScheduleDateTime",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "PrimaryInterviewer",
+          "type": "integer!"
+        },
+        {
+          "name": "ContactNumber",
+          "type": "varchar"
+        },
+        {
+          "name": "LocationId",
+          "type": "integer"
+        },
+        {
+          "name": "ScheduleComments",
+          "type": "varchar"
+        },
+        {
+          "name": "TrainingNeeds",
+          "type": "varchar"
+        },
+        {
+          "name": "AssessmentRemarks",
+          "type": "varchar"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "MeetingUId",
+          "type": "varchar"
+        },
+        {
+          "name": "CancelRemarks",
+          "type": "varchar"
+        },
+        {
+          "name": "CancelReasonId",
+          "type": "integer"
+        },
+        {
+          "name": "RescheduledReasonId",
+          "type": "integer"
+        },
+        {
+          "name": "ScheduleType",
+          "type": "integer!"
+        },
+        {
+          "name": "SecondaryInterviewer",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "UserSearchCriteria",
+      "schema": "ia",
+      "columns": [
+        {
+          "name": "Id",
+          "type": "integer!"
+        },
+        {
+          "name": "UserId",
+          "type": "integer!"
+        },
+        {
+          "name": "PageId",
+          "type": "integer!"
+        },
+        {
+          "name": "SearchData",
+          "type": "ARRAY!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "DesignationLevel",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "DesignationId",
+          "type": "integer"
+        },
+        {
+          "name": "NextDesignationId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "CreatedOn",
+          "type": "time with time zone"
+        },
+        {
+          "name": "ModifiedOn",
+          "type": "time with time zone"
+        },
+        {
+          "name": "DesignationPath",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Group",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "GroupId",
+          "type": "integer!"
+        },
+        {
+          "name": "GroupCode",
+          "type": "varchar!"
+        },
+        {
+          "name": "GroupName",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "IsLocked",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "GroupDetail",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "GroupDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "GroupId",
+          "type": "integer!"
+        },
+        {
+          "name": "GroupDetailCode",
+          "type": "varchar!"
+        },
+        {
+          "name": "GroupDetailName",
+          "type": "varchar!"
+        },
+        {
+          "name": "DisplaySequence",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "LanguageResources",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "LanguageResourceId",
+          "type": "integer!"
+        },
+        {
+          "name": "CultureCode",
+          "type": "varchar!"
+        },
+        {
+          "name": "ResourceGroup",
+          "type": "varchar!"
+        },
+        {
+          "name": "ControllerName",
+          "type": "varchar!"
+        },
+        {
+          "name": "ActionName",
+          "type": "varchar!"
+        },
+        {
+          "name": "ResourceKey",
+          "type": "varchar!"
+        },
+        {
+          "name": "ResourceValue",
+          "type": "text!"
+        },
+        {
+          "name": "ResourceRemarks",
+          "type": "text"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "RatingFormula",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "RatingId",
+          "type": "integer!"
+        },
+        {
+          "name": "StartRange",
+          "type": "smallint!"
+        },
+        {
+          "name": "EndRange",
+          "type": "smallint!"
+        },
+        {
+          "name": "Status",
+          "type": "varchar!"
+        },
+        {
+          "name": "EffectiveFrom",
+          "type": "date"
+        },
+        {
+          "name": "EffectiveTo",
+          "type": "date"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Round",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "RoundId",
+          "type": "integer!"
+        },
+        {
+          "name": "RoundName",
+          "type": "varchar!"
+        },
+        {
+          "name": "RoundType",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Status",
+      "schema": "lookup",
+      "columns": [
+        {
+          "name": "StatusId",
+          "type": "integer!"
+        },
+        {
+          "name": "Category",
+          "type": "integer!"
+        },
+        {
+          "name": "StatusName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Description",
+          "type": "varchar!"
+        },
+        {
+          "name": "NextStatusName",
+          "type": "varchar"
+        },
+        {
+          "name": "NextStatusId",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "AppraisalPeriod",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint!"
+        },
+        {
+          "name": "Title",
+          "type": "varchar!"
+        },
+        {
+          "name": "FromDate",
+          "type": "date!"
+        },
+        {
+          "name": "ToDate",
+          "type": "date!"
+        },
+        {
+          "name": "Description",
+          "type": "varchar"
+        },
+        {
+          "name": "ProcessStartDate",
+          "type": "date"
+        },
+        {
+          "name": "SubmitionDueDate",
+          "type": "date!"
+        },
+        {
+          "name": "ReviewDueDate",
+          "type": "date!"
+        },
+        {
+          "name": "ProcessEndDate",
+          "type": "date"
+        },
+        {
+          "name": "EffectiveDate",
+          "type": "date!"
+        },
+        {
+          "name": "StatusId",
+          "type": "smallint!"
+        },
+        {
+          "name": "LinkedAppraisalPeriodId",
+          "type": "smallint"
+        },
+        {
+          "name": "IsCurrentAppraisalPeriod",
+          "type": "boolean"
+        },
+        {
+          "name": "IsMidYearReview",
+          "type": "boolean"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "AttributeCategory",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "AttributeCategoryId",
+          "type": "integer!"
+        },
+        {
+          "name": "AttributeCategoryName",
+          "type": "varchar"
+        },
+        {
+          "name": "Weightage",
+          "type": "numeric"
+        },
+        {
+          "name": "BandId",
+          "type": "integer"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "MasterAttrCategoryId",
+          "type": "integer"
+        },
+        {
+          "name": "DisplaySequence",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "City",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "CityId",
+          "type": "integer!"
+        },
+        {
+          "name": "StateId",
+          "type": "integer!"
+        },
+        {
+          "name": "CityName",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Employee",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "Username",
+          "type": "varchar"
+        },
+        {
+          "name": "Password",
+          "type": "varchar"
+        },
+        {
+          "name": "EmployeeCode",
+          "type": "integer!"
+        },
+        {
+          "name": "FirstName",
+          "type": "varchar!"
+        },
+        {
+          "name": "LastName",
+          "type": "varchar"
+        },
+        {
+          "name": "BirthDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "JoiningDate",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "ConfirmationDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "LastAppraisalDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "Email",
+          "type": "varchar!"
+        },
+        {
+          "name": "MobileNo",
+          "type": "varchar"
+        },
+        {
+          "name": "BranchId",
+          "type": "integer"
+        },
+        {
+          "name": "DesignationId",
+          "type": "integer!"
+        },
+        {
+          "name": "RoleId",
+          "type": "integer"
+        },
+        {
+          "name": "SecurityLevelId",
+          "type": "integer"
+        },
+        {
+          "name": "BandId",
+          "type": "integer"
+        },
+        {
+          "name": "IsReporting",
+          "type": "boolean!"
+        },
+        {
+          "name": "MonthOfExperience",
+          "type": "integer"
+        },
+        {
+          "name": "TotalExperience",
+          "type": "numeric"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "LocationId",
+          "type": "integer"
+        },
+        {
+          "name": "DateOfExit",
+          "type": "timestamptz"
+        },
+        {
+          "name": "ReasonOfExit",
+          "type": "varchar"
+        },
+        {
+          "name": "SkillId",
+          "type": "integer"
+        },
+        {
+          "name": "IsPasswordSent",
+          "type": "boolean"
+        },
+        {
+          "name": "LastPromotedDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "IsConfirmationNotified",
+          "type": "boolean"
+        },
+        {
+          "name": "Grade",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "*\u26a0 Gotchas & Warnings:*",
+      "learned_filter": "IsDeleted = false",
+      "summary": ""
+    },
+    {
+      "name": "EmployeeStatusDetail",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "EmployeeStatusDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint"
+        },
+        {
+          "name": "StatusId",
+          "type": "smallint!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PerformanceAttributeDetail",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "PerformanceAttributeDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AttributeCategoryId",
+          "type": "integer"
+        },
+        {
+          "name": "PerformanceAttribute",
+          "type": "varchar"
+        },
+        {
+          "name": "Description",
+          "type": "varchar"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "MasterPerformanceAttrDetailId",
+          "type": "integer"
+        },
+        {
+          "name": "DisplaySequence",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Skill",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "SkillId",
+          "type": "integer!"
+        },
+        {
+          "name": "SkillName",
+          "type": "varchar!"
+        },
+        {
+          "name": "ParentSkillId",
+          "type": "integer"
+        },
+        {
+          "name": "SkillType",
+          "type": "integer!"
+        },
+        {
+          "name": "IsActive",
+          "type": "boolean!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "SkillApproval",
+          "type": "varchar"
+        },
+        {
+          "name": "SkillApprovalId",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "State",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "StateId",
+          "type": "integer!"
+        },
+        {
+          "name": "StateName",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "SurveyQuestion",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "QuestionId",
+          "type": "integer!"
+        },
+        {
+          "name": "Question",
+          "type": "varchar!"
+        },
+        {
+          "name": "Option1",
+          "type": "varchar!"
+        },
+        {
+          "name": "Option2",
+          "type": "varchar!"
+        },
+        {
+          "name": "Option3",
+          "type": "varchar!"
+        },
+        {
+          "name": "Option4",
+          "type": "varchar!"
+        },
+        {
+          "name": "Option5",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint"
+        },
+        {
+          "name": "DisplaySequence",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Technology",
+      "schema": "master",
+      "columns": [
+        {
+          "name": "Id",
+          "type": "integer!"
+        },
+        {
+          "name": "Name",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Notification",
+      "schema": "notification",
+      "columns": [
+        {
+          "name": "NotificationId",
+          "type": "integer!"
+        },
+        {
+          "name": "By",
+          "type": "integer!"
+        },
+        {
+          "name": "To",
+          "type": "ARRAY!"
+        },
+        {
+          "name": "Data",
+          "type": "json!"
+        },
+        {
+          "name": "NotificationTypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "NotificationTemplateId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsRead",
+          "type": "boolean!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "NotificationTemplate",
+      "schema": "notification",
+      "columns": [
+        {
+          "name": "NotificationTemplateId",
+          "type": "integer!"
+        },
+        {
+          "name": "NotificationTypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "Template",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "NotificationType",
+      "schema": "notification",
+      "columns": [
+        {
+          "name": "NotificationTypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "Type",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "ActionItem",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "ActionItemId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "DevelopmentPlanId",
+          "type": "integer!"
+        },
+        {
+          "name": "Description",
+          "type": "varchar!"
+        },
+        {
+          "name": "Accomplished",
+          "type": "varchar"
+        },
+        {
+          "name": "Pending",
+          "type": "varchar"
+        },
+        {
+          "name": "SuggestedDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "SuggestedBy",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Appraisal",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint"
+        },
+        {
+          "name": "StatusId",
+          "type": "smallint!"
+        },
+        {
+          "name": "AppraisalPeriodStatusId",
+          "type": "smallint"
+        },
+        {
+          "name": "MeetingType",
+          "type": "smallint!"
+        },
+        {
+          "name": "PrimaryReportingTo",
+          "type": "integer"
+        },
+        {
+          "name": "ReportingTo1",
+          "type": "integer"
+        },
+        {
+          "name": "ReportingTo2",
+          "type": "integer"
+        },
+        {
+          "name": "ReportingTo3",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "EffectiveDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "RatingStatus",
+          "type": "varchar"
+        },
+        {
+          "name": "PrimaryAppraiser",
+          "type": "varchar"
+        },
+        {
+          "name": "Appraiser1",
+          "type": "varchar"
+        },
+        {
+          "name": "Appraiser2",
+          "type": "varchar"
+        },
+        {
+          "name": "Appraiser3",
+          "type": "varchar"
+        },
+        {
+          "name": "MustAttendee",
+          "type": "integer"
+        },
+        {
+          "name": "ActualEffectiveDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "EmployeeBand",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "*\u26a0 Gotchas & Warnings:*",
+      "learned_filter": "IsDeleted = false AND RatingStatus IS NOT NULL AND TRIM(RatingStatus) <> ''",
+      "summary": ""
+    },
+    {
+      "name": "AppraisalDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "AppraisalDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "Description",
+          "type": "varchar!"
+        },
+        {
+          "name": "DescriptionType",
+          "type": "smallint!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "AppraisalLog",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "AppraisalLogId",
+          "type": "integer!"
+        },
+        {
+          "name": "AttributeDescription",
+          "type": "varchar!"
+        },
+        {
+          "name": "AttributeRemark",
+          "type": "varchar!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "IncidentDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "IncidentType",
+          "type": "integer"
+        },
+        {
+          "name": "ProjectId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "ProjectName",
+          "type": "varchar"
+        },
+        {
+          "name": "PerformanceAttribute",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CareerGoal",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "CareerGoalId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "Year",
+          "type": "smallint!"
+        },
+        {
+          "name": "CarrerGoal",
+          "type": "varchar"
+        },
+        {
+          "name": "Comment",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "ByWhenMonth",
+          "type": "integer"
+        },
+        {
+          "name": "ByWhenYear",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Competency",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "CompetencyId",
+          "type": "integer!"
+        },
+        {
+          "name": "Technology",
+          "type": "varchar"
+        },
+        {
+          "name": "Competency",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "PrimaryAppraiser",
+          "type": "varchar"
+        },
+        {
+          "name": "Status",
+          "type": "varchar"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "integer"
+        },
+        {
+          "name": "EmployeeCode",
+          "type": "integer"
+        },
+        {
+          "name": "YearsOfExperience",
+          "type": "varchar"
+        },
+        {
+          "name": "LastWorked",
+          "type": "varchar"
+        },
+        {
+          "name": "IsApproved",
+          "type": "boolean"
+        },
+        {
+          "name": "ApprovedBy",
+          "type": "integer"
+        },
+        {
+          "name": "ApprovedOn",
+          "type": "date"
+        },
+        {
+          "name": "ApprovedByName",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "CompetencyReport",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "CompetencyReportId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalDate",
+          "type": "date!"
+        },
+        {
+          "name": "EmployeeCode",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Designation",
+          "type": "varchar"
+        },
+        {
+          "name": "ReportingTo",
+          "type": "varchar"
+        },
+        {
+          "name": "PrimarySkillArea",
+          "type": "varchar"
+        },
+        {
+          "name": "PrimarySkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "PrimaryWeight",
+          "type": "integer"
+        },
+        {
+          "name": "PrimaryTraining",
+          "type": "text"
+        },
+        {
+          "name": "PrimaryIDP",
+          "type": "text"
+        },
+        {
+          "name": "ManagementSkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "ManagementWeight",
+          "type": "integer"
+        },
+        {
+          "name": "ManagementTraining",
+          "type": "text"
+        },
+        {
+          "name": "ManagementIDP",
+          "type": "text"
+        },
+        {
+          "name": "CommunicationSkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "CommunicationWeight",
+          "type": "integer"
+        },
+        {
+          "name": "CommunicationTraining",
+          "type": "text"
+        },
+        {
+          "name": "CommunicationIDP",
+          "type": "text"
+        },
+        {
+          "name": "AttitudeSkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "AttitudeWeight",
+          "type": "integer"
+        },
+        {
+          "name": "AttitudeTraining",
+          "type": "text"
+        },
+        {
+          "name": "AttitudeIDP",
+          "type": "text"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "DevelopmentPlan",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "DevelopmentPlanId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "Description",
+          "type": "varchar!"
+        },
+        {
+          "name": "RatingId",
+          "type": "integer"
+        },
+        {
+          "name": "ReviewerRatingId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "SuggestedBy",
+          "type": "integer!"
+        },
+        {
+          "name": "LastUpdatedBy",
+          "type": "integer"
+        },
+        {
+          "name": "TargetDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "Measure",
+          "type": "varchar"
+        },
+        {
+          "name": "PerformanceAreaId",
+          "type": "integer"
+        },
+        {
+          "name": "IsApproved",
+          "type": "boolean"
+        },
+        {
+          "name": "ActionsTaken",
+          "type": "varchar"
+        },
+        {
+          "name": "ActionsPlanned",
+          "type": "varchar"
+        },
+        {
+          "name": "AccomplishedAppraisalId",
+          "type": "integer"
+        },
+        {
+          "name": "IsCarryForward",
+          "type": "boolean"
+        },
+        {
+          "name": "SuggestedDate",
+          "type": "time with time zone"
+        },
+        {
+          "name": "MentorId",
+          "type": "integer"
+        },
+        {
+          "name": "PastDevlopmentPlanId",
+          "type": "integer"
+        },
+        {
+          "name": "IsAssignedByManager",
+          "type": "boolean"
+        },
+        {
+          "name": "idp_type",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "DevelopmentPlanApproval",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "DevelopmentPlanApprovalId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer"
+        },
+        {
+          "name": "Type",
+          "type": "USER-DEFINED"
+        },
+        {
+          "name": "ActionTakenBy",
+          "type": "integer"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar"
+        },
+        {
+          "name": "ActionTakenOn",
+          "type": "timestamptz"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "DevelopmentPlanDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "DevelopmentPlanDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "DevelopmentPlanId",
+          "type": "integer!"
+        },
+        {
+          "name": "DefinationOfDone",
+          "type": "varchar!"
+        },
+        {
+          "name": "DueDate",
+          "type": "date!"
+        },
+        {
+          "name": "ApprovedBy",
+          "type": "integer"
+        },
+        {
+          "name": "ApprovedDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "isDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "Status",
+          "type": "integer!"
+        },
+        {
+          "name": "SequenceNo",
+          "type": "integer!"
+        },
+        {
+          "name": "MentorId",
+          "type": "integer!"
+        },
+        {
+          "name": "ActionTaken",
+          "type": "varchar"
+        },
+        {
+          "name": "ReviewerRemarks",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "DevelopmentPlanDetailEmployeeProgress",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "DevelopmentPlanDetailEmployeeProgressID",
+          "type": "integer!"
+        },
+        {
+          "name": "DevelopmentPlanDetailID",
+          "type": "integer!"
+        },
+        {
+          "name": "Status",
+          "type": "integer"
+        },
+        {
+          "name": "ActionTaken",
+          "type": "varchar"
+        },
+        {
+          "name": "ReviewerRemarks",
+          "type": "varchar"
+        },
+        {
+          "name": "CreatedOn",
+          "type": "timestamptz"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "EmployeeSurvey",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "EmployeeSurveyId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "SurveyQuestionId",
+          "type": "integer!"
+        },
+        {
+          "name": "Answer",
+          "type": "smallint!"
+        },
+        {
+          "name": "Comments",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "LockDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "LockedWhen",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "LockedBy",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "MatricesRating",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "MatricesRatingId",
+          "type": "integer!"
+        },
+        {
+          "name": "MatricesAttributeId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "ReviewerId",
+          "type": "integer"
+        },
+        {
+          "name": "ProjectName",
+          "type": "varchar"
+        },
+        {
+          "name": "SelfRating",
+          "type": "float8!"
+        },
+        {
+          "name": "SelfRemark",
+          "type": "varchar"
+        },
+        {
+          "name": "ReviewerRating",
+          "type": "float8"
+        },
+        {
+          "name": "ReviewerRemark",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "OtherDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "OtherDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "CurrentProject",
+          "type": "varchar"
+        },
+        {
+          "name": "AppraiseComment",
+          "type": "varchar"
+        },
+        {
+          "name": "ArraiseName",
+          "type": "varchar"
+        },
+        {
+          "name": "AppraiserName",
+          "type": "varchar"
+        },
+        {
+          "name": "FormReceivedDate",
+          "type": "date"
+        },
+        {
+          "name": "FeedbackReceivedDate",
+          "type": "date"
+        },
+        {
+          "name": "AppraisalDate",
+          "type": "date"
+        },
+        {
+          "name": "TotalHours",
+          "type": "float8"
+        },
+        {
+          "name": "TotalSelfRating",
+          "type": "float8"
+        },
+        {
+          "name": "TotalPLRating",
+          "type": "float8"
+        },
+        {
+          "name": "FinalRating",
+          "type": "smallint"
+        },
+        {
+          "name": "Promotion",
+          "type": "boolean"
+        },
+        {
+          "name": "RecommendationComment",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "FastTrack",
+          "type": "boolean"
+        },
+        {
+          "name": "PIP",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PMDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "EmployeeCurrentPMId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "ProjectManagerId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PeerReview",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "PeerReviewId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "ReviewDetails",
+          "type": "json"
+        },
+        {
+          "name": "IsManager",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PeerReviewQuestions",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "QuestionId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "integer!"
+        },
+        {
+          "name": "AttributeCategoryId",
+          "type": "integer!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PeerReviewQuestionsDetails",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "QuestionId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "integer!"
+        },
+        {
+          "name": "ReviewQuestion",
+          "type": "varchar!"
+        },
+        {
+          "name": "ReviewCategoryID",
+          "type": "\"char\"!"
+        },
+        {
+          "name": "AttributeCategoryId",
+          "type": "integer"
+        },
+        {
+          "name": "DisplaySequence",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "ProjectDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "ProjectId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "ProjectName",
+          "type": "varchar!"
+        },
+        {
+          "name": "ReportingTo",
+          "type": "integer!"
+        },
+        {
+          "name": "FromDate",
+          "type": "date!"
+        },
+        {
+          "name": "ToDate",
+          "type": "date"
+        },
+        {
+          "name": "Responsibilities",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "AllocatedProjectId",
+          "type": "integer"
+        },
+        {
+          "name": "IsProject",
+          "type": "boolean!"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar"
+        },
+        {
+          "name": "SowId",
+          "type": "integer"
+        },
+        {
+          "name": "SowName",
+          "type": "varchar"
+        },
+        {
+          "name": "CustomerName",
+          "type": "varchar"
+        },
+        {
+          "name": "ReportingToName",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "ProjectFileDetails",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "DocumentId",
+          "type": "integer!"
+        },
+        {
+          "name": "ProjectId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "DocumentName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Document",
+          "type": "bytea"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PromotionDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "PromotionId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "CurrentDesignationId",
+          "type": "integer!"
+        },
+        {
+          "name": "PromotedDesignationId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "PromotionDetails",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "PromotionDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "CurrentDesignationId",
+          "type": "integer!"
+        },
+        {
+          "name": "PromotedDesignationId",
+          "type": "integer!"
+        },
+        {
+          "name": "PromotionDate",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "IsSignatureVerified",
+          "type": "boolean!"
+        },
+        {
+          "name": "SignatureVerifiedDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "ReviewDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "ReviewDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "ReviewType",
+          "type": "character!"
+        },
+        {
+          "name": "DescriptionType",
+          "type": "character!"
+        },
+        {
+          "name": "Description",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "ReviewerRating",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "ReviewerRatingId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "PerformanceAttributeDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AttributeCategoryId",
+          "type": "integer!"
+        },
+        {
+          "name": "ReviewerId",
+          "type": "integer!"
+        },
+        {
+          "name": "Rating",
+          "type": "smallint!"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "RatingScore",
+          "type": "float8"
+        }
+      ],
+      "gotcha": "*\u26a0 Gotchas & Warnings:*",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "ScheduleMeeting",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "ScheduleMeetingId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeId",
+          "type": "integer!"
+        },
+        {
+          "name": "MeetingDateTime",
+          "type": "timestamptz!"
+        },
+        {
+          "name": "BranchId",
+          "type": "integer"
+        },
+        {
+          "name": "MeetingUId",
+          "type": "text"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "MeetingLocation",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "SelfRating",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "SelfRatingId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "PerformanceAttributeDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AttributeCategoryId",
+          "type": "integer!"
+        },
+        {
+          "name": "SelfRating",
+          "type": "smallint!"
+        },
+        {
+          "name": "Remarks",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "SelfRatingScore",
+          "type": "float8"
+        }
+      ],
+      "gotcha": "*\u26a0 Gotchas & Warnings:*",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "SentimentImage",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "SentimentImageId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "SentimentImage",
+          "type": "bytea!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "StatusException",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "StatusExceptionId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "PreviousAppraisalPeriodStatusId",
+          "type": "smallint!"
+        },
+        {
+          "name": "CurrentAppraisalPeriodStatusId",
+          "type": "smallint!"
+        },
+        {
+          "name": "DueDate",
+          "type": "date!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "StrongArea",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "StrongAreaId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "Area",
+          "type": "varchar"
+        },
+        {
+          "name": "Assignment",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "TrainingAttendanceData",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "Id",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeCode",
+          "type": "integer"
+        },
+        {
+          "name": "TrainingId",
+          "type": "integer"
+        },
+        {
+          "name": "ApprisalId",
+          "type": "integer"
+        },
+        {
+          "name": "ScheduleDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "IsTrainAttendent",
+          "type": "boolean"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "IsPrevCancel",
+          "type": "boolean"
+        },
+        {
+          "name": "Comments",
+          "type": "varchar"
+        },
+        {
+          "name": "AppraisalPeriodId",
+          "type": "smallint"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "TrainingDetail",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "TrainingDetailId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "TrainingId",
+          "type": "smallint!"
+        },
+        {
+          "name": "TrainingTypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsAttended",
+          "type": "boolean!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "Comment",
+          "type": "varchar"
+        },
+        {
+          "name": "DeletedBy",
+          "type": "integer"
+        },
+        {
+          "name": "TrainingName",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "TrainingPlan",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "TrainingPlanId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "TrainingId",
+          "type": "smallint!"
+        },
+        {
+          "name": "TrainingTypeId",
+          "type": "integer!"
+        },
+        {
+          "name": "TrainingLevelId",
+          "type": "integer!"
+        },
+        {
+          "name": "FunctionId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        },
+        {
+          "name": "TrainingPriorityId",
+          "type": "integer"
+        },
+        {
+          "name": "TrainingModeId",
+          "type": "integer"
+        },
+        {
+          "name": "ActionTaken",
+          "type": "varchar"
+        },
+        {
+          "name": "MentorId",
+          "type": "integer"
+        },
+        {
+          "name": "ReviewerRemarks",
+          "type": "varchar"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer"
+        },
+        {
+          "name": "TargetDate",
+          "type": "timestamptz"
+        },
+        {
+          "name": "TrainingName",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "TrainingPlanEmployeeProgress",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "TrainingPlanEmployeeProgressId",
+          "type": "integer!"
+        },
+        {
+          "name": "TrainingPlanId",
+          "type": "integer!"
+        },
+        {
+          "name": "StatusId",
+          "type": "integer"
+        },
+        {
+          "name": "ActionTaken",
+          "type": "varchar"
+        },
+        {
+          "name": "ReviewerRemarks",
+          "type": "varchar"
+        },
+        {
+          "name": "CreatedOn",
+          "type": "timestamptz"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "WeakArea",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "WeakAreaId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "Area",
+          "type": "varchar"
+        },
+        {
+          "name": "Reason",
+          "type": "varchar"
+        },
+        {
+          "name": "ActionPlan",
+          "type": "varchar"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "dummyCompetencyReport",
+      "schema": "pa",
+      "columns": [
+        {
+          "name": "CompetencyReportId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalId",
+          "type": "integer!"
+        },
+        {
+          "name": "AppraisalDate",
+          "type": "date!"
+        },
+        {
+          "name": "EmployeeCode",
+          "type": "integer!"
+        },
+        {
+          "name": "EmployeeName",
+          "type": "varchar!"
+        },
+        {
+          "name": "Designation",
+          "type": "varchar"
+        },
+        {
+          "name": "ReportingTo",
+          "type": "varchar"
+        },
+        {
+          "name": "PrimarySkillArea",
+          "type": "varchar"
+        },
+        {
+          "name": "PrimarySkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "PrimaryWeight",
+          "type": "integer"
+        },
+        {
+          "name": "PrimaryTraining",
+          "type": "text"
+        },
+        {
+          "name": "PrimaryIDP",
+          "type": "text"
+        },
+        {
+          "name": "ManagementSkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "ManagementWeight",
+          "type": "integer"
+        },
+        {
+          "name": "ManagementTraining",
+          "type": "text"
+        },
+        {
+          "name": "ManagementIDP",
+          "type": "text"
+        },
+        {
+          "name": "CommunicationSkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "CommunicationWeight",
+          "type": "integer"
+        },
+        {
+          "name": "CommunicationTraining",
+          "type": "text"
+        },
+        {
+          "name": "CommunicationIDP",
+          "type": "text"
+        },
+        {
+          "name": "AttitudeSkillScore",
+          "type": "numeric"
+        },
+        {
+          "name": "AttitudeWeight",
+          "type": "integer"
+        },
+        {
+          "name": "AttitudeTraining",
+          "type": "text"
+        },
+        {
+          "name": "AttitudeIDP",
+          "type": "text"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "SequelizeMeta",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "name",
+          "type": "varchar!"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Users",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer!"
+        },
+        {
+          "name": "name",
+          "type": "varchar!"
+        },
+        {
+          "name": "email",
+          "type": "varchar!"
+        },
+        {
+          "name": "password",
+          "type": "varchar"
+        },
+        {
+          "name": "age",
+          "type": "integer"
+        },
+        {
+          "name": "user_type_id",
+          "type": "integer"
+        },
+        {
+          "name": "avatar",
+          "type": "bytea"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "gdidforbranch",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "GroupDetailId",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "gdidforlocation",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "LocationId",
+          "type": "integer"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "result",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "json_agg",
+          "type": "json"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "result1",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "coalesce",
+          "type": "json"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "userRoles",
+      "schema": "public",
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer!"
+        },
+        {
+          "name": "path",
+          "type": "varchar"
+        },
+        {
+          "name": "method",
+          "type": "varchar"
+        },
+        {
+          "name": "allowedRole",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Activity",
+      "schema": "security",
+      "columns": [
+        {
+          "name": "ActivityId",
+          "type": "integer!"
+        },
+        {
+          "name": "ActivityDescription",
+          "type": "varchar"
+        },
+        {
+          "name": "ActionMethod",
+          "type": "varchar!"
+        },
+        {
+          "name": "ControllerName",
+          "type": "varchar"
+        },
+        {
+          "name": "ParentActivityId",
+          "type": "integer"
+        },
+        {
+          "name": "Sequence",
+          "type": "smallint"
+        },
+        {
+          "name": "IsMenuItem",
+          "type": "boolean!"
+        },
+        {
+          "name": "ModuleId",
+          "type": "integer"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        },
+        {
+          "name": "Icon",
+          "type": "varchar"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "Module",
+      "schema": "security",
+      "columns": [
+        {
+          "name": "ModuleId",
+          "type": "integer!"
+        },
+        {
+          "name": "ModuleDescription",
+          "type": "varchar!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "RoleActivity",
+      "schema": "security",
+      "columns": [
+        {
+          "name": "RoleActivityId",
+          "type": "integer!"
+        },
+        {
+          "name": "RoleId",
+          "type": "integer!"
+        },
+        {
+          "name": "ActivityId",
+          "type": "integer!"
+        },
+        {
+          "name": "IsAuthorized",
+          "type": "boolean!"
+        },
+        {
+          "name": "IsDeleted",
+          "type": "boolean"
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    }
+  ]
+}

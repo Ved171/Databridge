@@ -1,0 +1,42 @@
+# Core
+fastapi==0.111.0
+uvicorn[standard]==0.35.0
+sqlalchemy[asyncio]==2.0.30
+alembic==1.13.1
+pydantic==2.11.7
+pydantic-settings==2.14.0
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+python-multipart==0.0.9
+cryptography==42.0.8
+redis[asyncio]==5.0.4
+httpx==0.28.1
+
+# Relational DB Connectors
+asyncpg==0.29.0           # PostgreSQL async
+aiomysql==0.2.0           # MySQL async
+aiosqlite==0.20.0         # SQLite async
+psycopg2-binary==2.9.9    # PostgreSQL sync (schema tools)
+pymysql==1.1.1            # MySQL sync
+
+# NoSQL Connectors
+motor==3.4.0              # MongoDB async
+pymongo==4.7.2            # MongoDB sync
+elasticsearch[async]==8.13.0  # Elasticsearch
+
+# Cloud / SaaS Connectors (install as needed)
+# snowflake-connector-python==3.10.0
+# simple-salesforce==1.12.5
+pyodbc==5.0.1             # MSSQL (requires ODBC driver)
+# cx_Oracle==8.3.0         # Oracle
+
+# Utilities
+pyarrow>=14.0.0
+sqlglot==23.12.2
+duckdb>=0.10.0
+tenacity==8.3.0
+structlog==24.2.0
+
+# MCP Server
+fastmcp==3.2.4
