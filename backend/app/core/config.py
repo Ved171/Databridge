@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -17,6 +18,10 @@ class Settings(BaseSettings):
 
     # Encryption (for storing connector credentials)
     ENCRYPTION_KEY: str = "change-me-32-char-encryption-key!"
+
+    # SQLite file uploads
+    SQLITE_UPLOAD_DIR: str = os.environ.get("SQLITE_UPLOAD_DIR", "/data/sqlite")
+    SQLITE_MAX_UPLOAD_MB: int = 500
 
     class Config:
         env_file = ".env"

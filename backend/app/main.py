@@ -33,6 +33,12 @@ async def lifespan(app: FastAPI):
                     pass
         except Exception as e:
             logger.warning("Auto-migration of rls_policies failed", error=str(e))
+
+    # Ensure SQLite upload directory exists
+    import os
+    sqlite_dir = settings.SQLITE_UPLOAD_DIR
+    os.makedirs(sqlite_dir, exist_ok=True)
+    logger.info("SQLite upload directory ready", path=sqlite_dir)
             
     yield
     logger.info("DataBridge shutting down")

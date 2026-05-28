@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Database, Trash2, RefreshCw, CheckCircle, XCircle,
-  ChevronDown, ChevronUp, Eye, EyeOff, Loader2, Zap, Pencil, X
+  ChevronDown, ChevronUp, Eye, EyeOff, Loader2, Zap, Pencil, X, AlertCircle
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../lib/api'
@@ -282,25 +282,43 @@ export function ConnectorsPage() {
   const canEdit = isAdmin || isWsAdmin  // members cannot edit
   const canDelete = isAdmin             // only admins can delete
 
+  // SQLite upload specific state
+  const [sqliteMode, setSqliteMode] = useState<'upload' | 'path'>('upload')
+  const [sqliteFile, setSqliteFile] = useState<File | null>(null)
+  const [editSqliteMode, setEditSqliteMode] = useState<'upload' | 'path'>('upload')
+  const [editSqliteFile, setEditSqliteFile] = useState<File | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+
   const { data: connectors = [], isLoading } = useQuery({
     queryKey: ['connectors'],
     queryFn: () => api.get('/api/connectors/').then(r => r.data),
   })
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => api.post('/api/connectors/', data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['connectors'] }); setShowForm(false); resetForm() },
+    mutationFn: (data: any) => {
+      if (data instanceof FormData) {
+        return api.post('/api/connectors/upload-sqlite', data, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        })
+      }
+      return api.post('/api/connectors/', data)
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['connectors'] })
+      setShowForm(false)
+      resetForm()
+      toast.success('Connector created')
+    },
+    onError: (e: any) => toast.error(e.response?.data?.detail || 'Creation failed'),
   })
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.delete(`/api/connectors/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['connectors'] }),
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => api.patch(`/api/connectors/${id}`, data),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['connectors'] }); setEditTarget(null); toast.success('Connector updated') },
-    onError: (e: any) => toast.error(e.response?.data?.detail || 'Update failed'),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['connectors'] })
+      toast.success('Connector deleted')
+    },
+    onError: (e: any) => toast.error(e.response?.data?.detail || 'Delete failed'),
   })
 
   const openEditModal = async (c: any) => {
@@ -308,19 +326,77 @@ export function ConnectorsPage() {
     try {
       const res = await api.get(`/api/connectors/${c.id}/config`)
       setEditTarget({ id: c.id, name: c.name, type: c.type, config: res.data })
+      if (c.type === 'sqlite') {
+        const isUploaded = isUploadedPath(res.data.path || '')
+        setEditSqliteMode(isUploaded ? 'upload' : 'path')
+        setEditSqliteFile(null)
+      }
     } catch {
       toast.error('Failed to load config')
     }
     setEditLoading(false)
   }
 
-  const resetForm = () => setForm({ name: '', type: 'postgres', config: {} })
+  const resetForm = () => {
+    setForm({ name: '', type: 'postgres', config: {} })
+    setSqliteMode('upload')
+    setSqliteFile(null)
+  }
 
   const selectedType = DB_TYPES.find(t => t.value === form.type)
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
-    createMutation.mutate({ name: form.name, type: form.type, config: form.config })
+    if (form.type === 'sqlite' && sqliteMode === 'upload') {
+      if (!sqliteFile) {
+        toast.error('Please select a database file to upload')
+        return
+      }
+      if (sqliteFile.size > 500 * 1024 * 1024) {
+        toast.error('File size exceeds the 500MB limit. Use the Server File Path option.')
+        return
+      }
+      const formData = new FormData()
+      formData.append('name', form.name)
+      formData.append('file', sqliteFile)
+      createMutation.mutate(formData)
+    } else {
+      createMutation.mutate({ name: form.name, type: form.type, config: form.config })
+    }
+  }
+
+  const handleUpdate = async () => {
+    if (!editTarget) return
+    setIsSaving(true)
+    try {
+      if (editTarget.type === 'sqlite' && editSqliteMode === 'upload') {
+        if (editSqliteFile) {
+          if (editSqliteFile.size > 500 * 1024 * 1024) {
+            toast.error('File size exceeds the 500MB limit. Use the Server File Path option.')
+            setIsSaving(false)
+            return
+          }
+          const formData = new FormData()
+          formData.append('file', editSqliteFile)
+          await api.post(`/api/connectors/${editTarget.id}/upload-sqlite-file`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          })
+        }
+        await api.patch(`/api/connectors/${editTarget.id}`, { name: editTarget.name })
+      } else {
+        await api.patch(`/api/connectors/${editTarget.id}`, {
+          name: editTarget.name,
+          config: editTarget.config
+        })
+      }
+      toast.success('Connector updated')
+      qc.invalidateQueries({ queryKey: ['connectors'] })
+      setEditTarget(null)
+    } catch (e: any) {
+      toast.error(e.response?.data?.detail || 'Update failed')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const testConnection = async (id: string) => {
@@ -409,84 +485,95 @@ export function ConnectorsPage() {
                   </span>
                 </p>
 
-                {selectedType.fieldGroups.map((group, gi) => (
-                  <div key={gi}>
-                    {group.title && (
-                      <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 mt-1">{group.title}</p>
-                    )}
-                    <div className="grid grid-cols-2 gap-3">
-                      {group.fields.map(field => (
-                        <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">
-                            {field.label}
-                            {field.required && <span className="text-red-400 ml-0.5">*</span>}
-                          </label>
+                {selectedType.value === 'sqlite' ? (
+                  <SqliteConnectorForm
+                    sqliteMode={sqliteMode}
+                    setSqliteMode={setSqliteMode}
+                    sqliteFile={sqliteFile}
+                    setSqliteFile={setSqliteFile}
+                    sqlitePath={form.config.path || ''}
+                    setSqlitePath={(p) => setForm(f => ({ ...f, config: { ...f.config, path: p } }))}
+                  />
+                ) : (
+                  selectedType.fieldGroups.map((group, gi) => (
+                    <div key={gi}>
+                      {group.title && (
+                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 mt-1">{group.title}</p>
+                      )}
+                      <div className="grid grid-cols-2 gap-3">
+                        {group.fields.map(field => (
+                          <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              {field.label}
+                              {field.required && <span className="text-red-400 ml-0.5">*</span>}
+                            </label>
 
-                          {/* Select dropdown */}
-                          {field.type === 'select' && field.options ? (
-                            <select
-                              value={form.config[field.key] || field.options[0]?.value || ''}
-                              onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
-                              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                            >
-                              {field.options.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
-                              ))}
-                            </select>
-
-                          /* Textarea */
-                          ) : field.type === 'textarea' ? (
-                            <div className="relative">
-                              <textarea
-                                value={form.config[field.key] || ''}
+                            {/* Select dropdown */}
+                            {field.type === 'select' && field.options ? (
+                              <select
+                                value={form.config[field.key] || field.options[0]?.value || ''}
                                 onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
-                                placeholder={field.placeholder || ''}
-                                required={field.required}
-                                rows={3}
-                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
-                              />
-                              {field.secret && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
-                                  className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
-                                >
-                                  {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                              )}
-                            </div>
+                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                              >
+                                {field.options.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
 
-                          /* Default: text/password input */
-                          ) : (
-                            <div className="relative">
-                              <input
-                                type={field.secret && !showSecrets[field.key] ? 'password' : 'text'}
-                                value={form.config[field.key] || ''}
-                                onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
-                                placeholder={field.placeholder || ''}
-                                required={field.required}
-                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                              />
-                              {field.secret && (
-                                <button
-                                  type="button"
-                                  onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                >
-                                  {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                              )}
-                            </div>
-                          )}
+                            /* Textarea */
+                            ) : field.type === 'textarea' ? (
+                              <div className="relative">
+                                <textarea
+                                  value={form.config[field.key] || ''}
+                                  onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
+                                  placeholder={field.placeholder || ''}
+                                  required={field.required}
+                                  rows={3}
+                                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
+                                />
+                                {field.secret && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
+                                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+                              </div>
 
-                          {field.helpText && (
-                            <p className="text-xs text-gray-400 mt-0.5">{field.helpText}</p>
-                          )}
-                        </div>
-                      ))}
+                            /* Default: text/password input */
+                            ) : (
+                              <div className="relative">
+                                <input
+                                  type={field.secret && !showSecrets[field.key] ? 'password' : 'text'}
+                                  value={form.config[field.key] || ''}
+                                  onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
+                                  placeholder={field.placeholder || ''}
+                                  required={field.required}
+                                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                                {field.secret && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                  >
+                                    {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {field.helpText && (
+                              <p className="text-xs text-gray-400 mt-0.5">{field.helpText}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             )}
 
@@ -628,45 +715,58 @@ export function ConnectorsPage() {
                   <input value={editTarget.name} onChange={e => setEditTarget(p => p ? { ...p, name: e.target.value } : p)}
                     className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 </div>
-                {editType?.fieldGroups.map((group, gi) => (
-                  <div key={gi}>
-                    {group.title && <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{group.title}</p>}
-                    <div className="grid grid-cols-2 gap-3">
-                      {group.fields.map(field => (
-                        <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">{field.label}</label>
-                          {field.type === 'select' && field.options ? (
-                            <select value={editTarget.config[field.key] || ''}
-                              onChange={e => setEditTarget(p => p ? { ...p, config: { ...p.config, [field.key]: e.target.value } } : p)}
-                              className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                              {field.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                            </select>
-                          ) : (
-                            <div className="relative">
-                              <input type={field.secret && !showSecrets[`edit_${field.key}`] ? 'password' : 'text'}
-                                value={editTarget.config[field.key] || ''}
+                {editTarget.type === 'sqlite' ? (
+                  <SqliteConnectorForm
+                    sqliteMode={editSqliteMode}
+                    setSqliteMode={setEditSqliteMode}
+                    sqliteFile={editSqliteFile}
+                    setSqliteFile={setEditSqliteFile}
+                    sqlitePath={editTarget.config.path || ''}
+                    setSqlitePath={(p) => setEditTarget(p => p ? { ...p, config: { ...p.config, path: p } } : p)}
+                    isEdit={true}
+                    existingPath={editTarget.config.path}
+                  />
+                ) : (
+                  editType?.fieldGroups.map((group, gi) => (
+                    <div key={gi}>
+                      {group.title && <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{group.title}</p>}
+                      <div className="grid grid-cols-2 gap-3">
+                        {group.fields.map(field => (
+                          <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">{field.label}</label>
+                            {field.type === 'select' && field.options ? (
+                              <select value={editTarget.config[field.key] || ''}
                                 onChange={e => setEditTarget(p => p ? { ...p, config: { ...p.config, [field.key]: e.target.value } } : p)}
-                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                              {field.secret && (
-                                <button type="button" onClick={() => setShowSecrets(s => ({ ...s, [`edit_${field.key}`]: !s[`edit_${field.key}`] }))}
-                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-                                  {showSecrets[`edit_${field.key}`] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
+                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                {field.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                              </select>
+                            ) : (
+                              <div className="relative">
+                                <input type={field.secret && !showSecrets[`edit_${field.key}`] ? 'password' : 'text'}
+                                  value={editTarget.config[field.key] || ''}
+                                  onChange={e => setEditTarget(p => p ? { ...p, config: { ...p.config, [field.key]: e.target.value } } : p)}
+                                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                {field.secret && (
+                                  <button type="button" onClick={() => setShowSecrets(s => ({ ...s, [`edit_${field.key}`]: !s[`edit_${field.key}`] }))}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    {showSecrets[`edit_${field.key}`] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
               <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 sticky bottom-0">
                 <button className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900" onClick={() => setEditTarget(null)}>Cancel</button>
                 <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
-                  disabled={updateMutation.isPending}
-                  onClick={() => updateMutation.mutate({ id: editTarget.id, data: { name: editTarget.name, config: editTarget.config } })}>
-                  {updateMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Save Changes
+                  disabled={isSaving}
+                  onClick={handleUpdate}>
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Save Changes
                 </button>
               </div>
             </div>
@@ -711,6 +811,230 @@ function SchemaPreview({ connectorId }: { connectorId: string }) {
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+interface SqliteConnectorFormProps {
+  sqliteMode: 'upload' | 'path'
+  setSqliteMode: (mode: 'upload' | 'path') => void
+  sqliteFile: File | null
+  setSqliteFile: (file: File | null) => void
+  sqlitePath: string
+  setSqlitePath: (path: string) => void
+  isEdit?: boolean
+  existingPath?: string
+}
+
+const isUploadedPath = (path: string) => {
+  if (!path) return false
+  return path.startsWith('/data/sqlite/') || /^[a-f0-9]{12}_/.test(path.split('/').pop() || '')
+}
+
+const getSqliteFileName = (path: string) => {
+  if (!path) return ''
+  const parts = path.split('/')
+  const lastPart = parts[parts.length - 1]
+  const match = lastPart.match(/^[a-f0-9]{12}_(.+)$/)
+  return match ? match[1] : lastPart
+}
+
+export function SqliteConnectorForm({
+  sqliteMode,
+  setSqliteMode,
+  sqliteFile,
+  setSqliteFile,
+  sqlitePath,
+  setSqlitePath,
+  isEdit = false,
+  existingPath = ''
+}: SqliteConnectorFormProps) {
+  const currentFileName = getSqliteFileName(existingPath)
+  const isUploaded = isUploadedPath(existingPath)
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setSqliteFile(e.dataTransfer.files[0])
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSqliteFile(e.target.files[0])
+    }
+  }
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
+  const isTooLarge = sqliteFile ? sqliteFile.size > 500 * 1024 * 1024 : false
+
+  return (
+    <div className="space-y-4 col-span-2">
+      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
+        <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider font-mono">
+          SQLite Setup Method
+        </label>
+        <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs font-medium">
+          <button
+            type="button"
+            onClick={() => setSqliteMode('upload')}
+            className={clsx(
+              'px-3 py-1 rounded-md transition-all',
+              sqliteMode === 'upload' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
+            )}
+          >
+            Upload File
+          </button>
+          <button
+            type="button"
+            onClick={() => setSqliteMode('path')}
+            className={clsx(
+              'px-3 py-1 rounded-md transition-all',
+              sqliteMode === 'path' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
+            )}
+          >
+            Server File Path
+          </button>
+        </div>
+      </div>
+
+      {sqliteMode === 'upload' ? (
+        <div className="space-y-3">
+          {sqliteFile ? (
+            <div className={clsx(
+              "border rounded-xl p-4 flex items-center justify-between shadow-sm transition-all duration-200",
+              isTooLarge ? "border-red-200 bg-red-50/50" : "border-emerald-200 bg-emerald-50/50"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className={clsx(
+                  "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
+                  isTooLarge ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600"
+                )}>
+                  <Database className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate max-w-[220px]">{sqliteFile.name}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{formatBytes(sqliteFile.size)}</p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {isTooLarge ? (
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-red-100 text-red-800">
+                    Too Large (&gt;500MB)
+                  </span>
+                ) : (
+                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 flex items-center gap-1">
+                    <CheckCircle className="w-3 h-3" /> Ready
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSqliteFile(null)}
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-white transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ) : isEdit && isUploaded && !sqliteFile ? (
+            <div className="border border-indigo-100 bg-indigo-50/30 rounded-xl p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate max-w-[220px]">{currentFileName}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Currently stored database file</p>
+                </div>
+              </div>
+              <label className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg cursor-pointer hover:shadow-sm transition-all flex-shrink-0">
+                Replace File
+                <input
+                  type="file"
+                  accept=".db,.sqlite,.sqlite3"
+                  className="hidden"
+                  onChange={handleFileChange}
+                />
+              </label>
+            </div>
+          ) : (
+            <div
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-500 hover:bg-indigo-50/10 transition-all cursor-pointer relative"
+            >
+              <input
+                type="file"
+                accept=".db,.sqlite,.sqlite3"
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                onChange={handleFileChange}
+              />
+              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-gray-100">
+                <Plus className="w-6 h-6 text-gray-400" />
+              </div>
+              <p className="text-sm font-medium text-gray-700">
+                Drag and drop your SQLite database here, or <span className="text-indigo-600 font-semibold">browse</span>
+              </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Accepts .db, .sqlite, .sqlite3 (Max size: 500MB)
+              </p>
+            </div>
+          )}
+
+          {isTooLarge && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-800">File size exceeds limit</p>
+                <p className="text-xs text-red-600 mt-1 leading-relaxed">
+                  The file you selected is too large to be uploaded. Database uploads are capped at 500MB.
+                  For larger files, we recommend copying the database to the server manually and using the
+                  <strong> Server File Path</strong> option instead.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSqliteMode('path');
+                    setSqliteFile(null);
+                  }}
+                  className="mt-3 text-xs font-semibold text-red-700 hover:text-red-800 bg-white border border-red-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all"
+                >
+                  Switch to Server File Path
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-1">
+          <label className="block text-xs font-medium text-gray-600">
+            Database File Path <span className="text-red-400">*</span>
+          </label>
+          <input
+            type="text"
+            value={sqlitePath}
+            onChange={(e) => setSqlitePath(e.target.value)}
+            placeholder="e.g. /data/sqlite/my_database.db"
+            required
+            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          />
+          <p className="text-xs text-gray-400 mt-1 font-sans">
+            Provide the absolute path to the SQLite file accessible by the backend server.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
