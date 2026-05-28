@@ -12,7 +12,7 @@ export function PermissionsPage() {
   const [showRLSForm, setShowRLSForm] = useState(false)
   const [editingRLSId, setEditingRLSId] = useState<string | null>(null)
   const [rlsForm, setRlsForm] = useState({
-    name: '', table_name: '', filter_expr: '',
+    name: '', table_name: '', filter_expr: '', filter_expr_nosql: '',
     applies_to_user_id: '', applies_to_role: '',
   })
 
@@ -56,7 +56,7 @@ export function PermissionsPage() {
       refetchRLS()
       toast.success('RLS policy created')
       setShowRLSForm(false)
-      setRlsForm({ name: '', table_name: '', filter_expr: '', applies_to_user_id: '', applies_to_role: '' })
+      setRlsForm({ name: '', table_name: '', filter_expr: '', filter_expr_nosql: '', applies_to_user_id: '', applies_to_role: '' })
     },
     onError: (e: any) => toast.error(e.response?.data?.detail || 'Failed'),
   })
@@ -68,7 +68,7 @@ export function PermissionsPage() {
       toast.success('RLS policy updated')
       setShowRLSForm(false)
       setEditingRLSId(null)
-      setRlsForm({ name: '', table_name: '', filter_expr: '', applies_to_user_id: '', applies_to_role: '' })
+      setRlsForm({ name: '', table_name: '', filter_expr: '', filter_expr_nosql: '', applies_to_user_id: '', applies_to_role: '' })
     },
     onError: (e: any) => toast.error(e.response?.data?.detail || 'Failed'),
   })
@@ -84,6 +84,10 @@ export function PermissionsPage() {
       api.delete(`/api/permissions/connector/${selectedConnector}/rls/${policyId}`),
     onSuccess: () => { refetchRLS(); toast.success('Policy deleted') },
   })
+
+  const activeConnector = connectors.find((c: any) => c.id === selectedConnector)
+  const isNoSQL = activeConnector && ['mongodb', 'elasticsearch', 'redis', 'salesforce'].includes(activeConnector.type.toLowerCase())
+  const isRedis = activeConnector && activeConnector.type.toLowerCase() === 'redis'
 
   // Build permission map: userId → {can_create, can_read, can_update, can_delete}
   const permMap: Record<string, any> = {}
@@ -227,7 +231,7 @@ export function PermissionsPage() {
                 className="btn-primary text-sm flex items-center gap-1"
                 onClick={() => {
                   setEditingRLSId(null)
-                  setRlsForm({ name: '', table_name: '', filter_expr: '', applies_to_user_id: '', applies_to_role: '' })
+                  setRlsForm({ name: '', table_name: '', filter_expr: '', filter_expr_nosql: '', applies_to_user_id: '', applies_to_role: '' })
                   setShowRLSForm(true)
                 }}
               >
@@ -247,20 +251,76 @@ export function PermissionsPage() {
                   </div>
                   <div>
                     <label className="label">Table Name</label>
-                    <input className="input" placeholder="e.g. employees"
+                    <input className="input" placeholder="e.g. employees (or Redis key prefix)"
                       value={rlsForm.table_name} onChange={e => setRlsForm({ ...rlsForm, table_name: e.target.value })} />
                   </div>
-                  <div className="col-span-2">
-                    <label className="label">Filter Expression (SQL WHERE fragment)</label>
-                    <input className="input font-mono text-sm"
-                      placeholder="department_id = '{user.id}' OR manager_email = '{user.email}'"
-                      value={rlsForm.filter_expr}
-                      onChange={e => setRlsForm({ ...rlsForm, filter_expr: e.target.value })} />
-                    <p className="text-xs text-gray-400 mt-1">
-                      Supports: <code className="bg-gray-100 px-1 rounded">{'{user.id}'}</code>{' '}
-                      <code className="bg-gray-100 px-1 rounded">{'{user.email}'}</code>
-                    </p>
-                  </div>
+                  {isNoSQL ? (
+                    isRedis ? (
+                      <div className="col-span-2">
+                        <label className="label">Allowed Key Pattern (Redis SCAN Glob pattern)</label>
+                        <input className="input font-mono text-sm"
+                          placeholder="org:{user.id}:*"
+                          value={rlsForm.filter_expr_nosql}
+                          onChange={e => setRlsForm({ ...rlsForm, filter_expr_nosql: e.target.value })} />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Restricts key access. Supports: <code className="bg-gray-100 px-1 rounded">{'{user.id}'}</code>{' '}
+                          <code className="bg-gray-100 px-1 rounded">{'{user.email}'}</code>
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="col-span-2">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="label mb-0">Filter Expression (JSON object)</label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              className="text-xs text-brand-600 hover:text-brand-700 font-medium bg-brand-50 px-2 py-0.5 rounded border border-brand-100"
+                              onClick={() => {
+                                const template = activeConnector?.type?.toLowerCase() === 'mongodb' ?
+                                  '{\n  "field": "org_id",\n  "op": "eq",\n  "value": "{user.id}"\n}' :
+                                  activeConnector?.type?.toLowerCase() === 'elasticsearch' ?
+                                  '{\n  "field": "tenant_id",\n  "op": "eq",\n  "value": "{user.id}"\n}' :
+                                  '{\n  "field": "OwnerId",\n  "op": "eq",\n  "value": "{user.id}"\n}';
+                                setRlsForm({ ...rlsForm, filter_expr_nosql: template });
+                              }}
+                            >
+                              Insert {activeConnector?.type} Template
+                            </button>
+                            <button
+                              type="button"
+                              className="text-xs text-brand-600 hover:text-brand-700 font-medium bg-brand-50 px-2 py-0.5 rounded border border-brand-100"
+                              onClick={() => {
+                                const template = '{\n  "org_id": "{user.id}"\n}';
+                                setRlsForm({ ...rlsForm, filter_expr_nosql: template });
+                              }}
+                            >
+                              Insert Raw Query Template
+                            </button>
+                          </div>
+                        </div>
+                        <textarea className="input font-mono text-sm h-32"
+                          placeholder={`{\n  "field": "org_id",\n  "op": "eq",\n  "value": "{user.id}"\n}`}
+                          value={rlsForm.filter_expr_nosql}
+                          onChange={e => setRlsForm({ ...rlsForm, filter_expr_nosql: e.target.value })} />
+                        <p className="text-xs text-gray-400 mt-1">
+                          Supports structured op/value format or raw query. Resolved placeholders: <code className="bg-gray-100 px-1 rounded">{'{user.id}'}</code>{' '}
+                          <code className="bg-gray-100 px-1 rounded">{'{user.email}'}</code>
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="col-span-2">
+                      <label className="label">Filter Expression (SQL WHERE fragment)</label>
+                      <input className="input font-mono text-sm"
+                        placeholder="department_id = '{user.id}' OR manager_email = '{user.email}'"
+                        value={rlsForm.filter_expr}
+                        onChange={e => setRlsForm({ ...rlsForm, filter_expr: e.target.value })} />
+                      <p className="text-xs text-gray-400 mt-1">
+                        Supports: <code className="bg-gray-100 px-1 rounded">{'{user.id}'}</code>{' '}
+                        <code className="bg-gray-100 px-1 rounded">{'{user.email}'}</code>
+                      </p>
+                    </div>
+                  )}
                   <div>
                     <label className="label">Apply to User (optional)</label>
                     <select className="input"
@@ -286,10 +346,24 @@ export function PermissionsPage() {
                 </div>
                 <div className="flex gap-3 mt-4">
                   <button className="btn-primary text-sm" onClick={() => {
+                    let filterExprNosql = null
+                    if (isNoSQL) {
+                      if (isRedis) {
+                        filterExprNosql = { key_pattern: rlsForm.filter_expr_nosql }
+                      } else {
+                        try {
+                          filterExprNosql = rlsForm.filter_expr_nosql ? JSON.parse(rlsForm.filter_expr_nosql) : null
+                        } catch (err) {
+                          toast.error('Invalid JSON in NoSQL Filter Expression')
+                          return
+                        }
+                      }
+                    }
                     const payload = {
                       name: rlsForm.name,
                       table_name: rlsForm.table_name,
-                      filter_expr: rlsForm.filter_expr,
+                      filter_expr: isNoSQL ? null : rlsForm.filter_expr,
+                      filter_expr_nosql: isNoSQL ? filterExprNosql : null,
                       applies_to_user_id: rlsForm.applies_to_user_id || null,
                       applies_to_role: rlsForm.applies_to_role || null,
                     }
@@ -325,11 +399,17 @@ export function PermissionsPage() {
                       </span>
                     </div>
                     <p className="text-xs text-gray-500">
-                      Table: <span className="font-mono font-medium text-gray-700">{p.table_name}</span>
+                      Table/Prefix: <span className="font-mono font-medium text-gray-700">{p.table_name}</span>
                     </p>
-                    <p className="text-xs font-mono text-gray-500 bg-gray-50 rounded px-2 py-1 mt-1 truncate">
-                      WHERE {p.filter_expr}
-                    </p>
+                    {p.filter_expr_nosql ? (
+                      <pre className="text-xs font-mono text-gray-500 bg-gray-50 rounded px-2 py-1 mt-1 overflow-x-auto whitespace-pre-wrap max-h-32">
+                        {JSON.stringify(p.filter_expr_nosql, null, 2)}
+                      </pre>
+                    ) : (
+                      <p className="text-xs font-mono text-gray-500 bg-gray-50 rounded px-2 py-1 mt-1 truncate">
+                        WHERE {p.filter_expr}
+                      </p>
+                    )}
                     {p.applies_to_user_id && (
                       <p className="text-xs text-gray-400 mt-1">-&gt; User: {p.applies_to_user_id}</p>
                     )}
@@ -344,7 +424,10 @@ export function PermissionsPage() {
                         setRlsForm({
                           name: p.name,
                           table_name: p.table_name,
-                          filter_expr: p.filter_expr,
+                          filter_expr: p.filter_expr || '',
+                          filter_expr_nosql: p.filter_expr_nosql
+                            ? (isRedis ? (p.filter_expr_nosql.key_pattern || '') : JSON.stringify(p.filter_expr_nosql, null, 2))
+                            : '',
                           applies_to_user_id: p.applies_to_user_id || '',
                           applies_to_role: p.applies_to_role || '',
                         })

@@ -116,15 +116,52 @@ class MongoDBConnector(BaseConnector):
         """
         For MongoDB, the LLM generates a JSON aggregation pipeline instead of SQL.
         The pipeline is expected as: {"collection": "...", "pipeline": [...]}
+        Or for write operations:
+        - {"collection": "...", "operation": "insertOne", "document": {...}}
+        - {"collection": "...", "operation": "updateOne", "filter": {...}, "update": {...}}
+        - {"collection": "...", "operation": "deleteOne", "filter": {...}}
         """
         client, db_name = self._get_client()
         try:
             start = time.time()
             parsed = json.loads(sql)
             collection = parsed["collection"]
-            pipeline = parsed["pipeline"]
-
             db = client[db_name]
+
+            operation = parsed.get("operation")
+            if operation == "insertOne":
+                doc = parsed.get("document", {})
+                result = await db[collection].insert_one(doc)
+                duration_ms = (time.time() - start) * 1000
+                return QueryResult(
+                    columns=["inserted_id"],
+                    rows=[[str(result.inserted_id)]],
+                    row_count=1,
+                    duration_ms=duration_ms
+                )
+            elif operation == "updateOne":
+                filter_obj = parsed.get("filter", {})
+                update_obj = parsed.get("update", {})
+                result = await db[collection].update_one(filter_obj, update_obj)
+                duration_ms = (time.time() - start) * 1000
+                return QueryResult(
+                    columns=["matched_count", "modified_count"],
+                    rows=[[str(result.matched_count), str(result.modified_count)]],
+                    row_count=1,
+                    duration_ms=duration_ms
+                )
+            elif operation == "deleteOne":
+                filter_obj = parsed.get("filter", {})
+                result = await db[collection].delete_one(filter_obj)
+                duration_ms = (time.time() - start) * 1000
+                return QueryResult(
+                    columns=["deleted_count"],
+                    rows=[[str(result.deleted_count)]],
+                    row_count=1,
+                    duration_ms=duration_ms
+                )
+
+            pipeline = parsed["pipeline"]
             cursor = db[collection].aggregate(pipeline)
             docs = await cursor.to_list(length=1000)
             duration_ms = (time.time() - start) * 1000

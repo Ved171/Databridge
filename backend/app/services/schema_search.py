@@ -46,7 +46,7 @@ def _tokenize(text: str) -> List[str]:
         text: The text to tokenize.
         
     Returns:
-        List of meaningful tokens.
+        List of meaningful tokens. Divides the questions into tokens and removes stop words.
     """
     # Remove punctuation, lowercase, split
     text = re.sub(r"[^a-zA-Z0-9_ ]+", " ", text.lower())

@@ -144,11 +144,40 @@ async def create_rls_policy(
     db: AsyncSession = Depends(get_db),
     _: User = Depends(get_current_admin_or_wsadmin),
 ):
+    # Fetch connector to determine connector type and check if it exists
+    conn_result = await db.execute(select(Connector).where(Connector.id == connector_id))
+    connector = conn_result.scalar_one_or_none()
+    if not connector:
+        raise HTTPException(status_code=404, detail="Connector not found")
+
+    db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
+    nosql_types = {"mongodb", "elasticsearch", "redis", "salesforce"}
+
+    if db_type in nosql_types:
+        if not payload.filter_expr_nosql:
+            raise HTTPException(
+                status_code=400,
+                detail=f"RLS policy on {db_type} connector requires filter_expr_nosql (JSON structure)."
+            )
+        if db_type == "redis":
+            if not isinstance(payload.filter_expr_nosql, dict) or "key_pattern" not in payload.filter_expr_nosql:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Redis RLS policy requires a JSON object with 'key_pattern' (e.g. {'key_pattern': 'user:{user.id}:*'})"
+                )
+    else:
+        if not payload.filter_expr:
+            raise HTTPException(
+                status_code=400,
+                detail=f"RLS policy on SQL connector {db_type} requires filter_expr (SQL fragment)."
+            )
+
     policy = RLSPolicy(
         connector_id=connector_id,
         name=payload.name,
         table_name=payload.table_name,
         filter_expr=payload.filter_expr,
+        filter_expr_nosql=payload.filter_expr_nosql,
         applies_to_user_id=payload.applies_to_user_id,
         applies_to_role=payload.applies_to_role,
     )
@@ -202,6 +231,37 @@ async def update_rls_policy(
     policy = result.scalar_one_or_none()
     if not policy:
         raise HTTPException(status_code=404, detail="Policy not found")
+
+    conn_result = await db.execute(select(Connector).where(Connector.id == connector_id))
+    connector = conn_result.scalar_one_or_none()
+    if not connector:
+        raise HTTPException(status_code=404, detail="Connector not found")
+
+    db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
+    nosql_types = {"mongodb", "elasticsearch", "redis", "salesforce"}
+
+    filter_expr = payload.filter_expr if payload.filter_expr is not None else policy.filter_expr
+    filter_expr_nosql = payload.filter_expr_nosql if payload.filter_expr_nosql is not None else policy.filter_expr_nosql
+
+    if db_type in nosql_types:
+        if not filter_expr_nosql:
+            raise HTTPException(
+                status_code=400,
+                detail=f"RLS policy on {db_type} connector requires filter_expr_nosql (JSON structure)."
+            )
+        if db_type == "redis":
+            if not isinstance(filter_expr_nosql, dict) or "key_pattern" not in filter_expr_nosql:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Redis RLS policy requires a JSON object with 'key_pattern'"
+                )
+    else:
+        if not filter_expr:
+            raise HTTPException(
+                status_code=400,
+                detail=f"RLS policy on SQL connector {db_type} requires filter_expr (SQL fragment)."
+            )
+
     update_data = payload.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(policy, key, value)

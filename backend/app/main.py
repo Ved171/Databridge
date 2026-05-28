@@ -15,6 +15,25 @@ async def lifespan(app: FastAPI):
     logger.info("DataBridge starting up", environment=settings.ENVIRONMENT)
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Auto-migrate rls_policies columns if they are missing
+        try:
+            from sqlalchemy import text
+            is_postgres = "postgresql" in str(engine.url)
+            if is_postgres:
+                await conn.execute(text("ALTER TABLE rls_policies ADD COLUMN IF NOT EXISTS filter_expr_nosql JSON;"))
+                await conn.execute(text("ALTER TABLE rls_policies ALTER COLUMN filter_expr DROP NOT NULL;"))
+                logger.info("PostgreSQL rls_policies auto-migration succeeded")
+            else:
+                try:
+                    await conn.execute(text("ALTER TABLE rls_policies ADD COLUMN filter_expr_nosql JSON;"))
+                    logger.info("SQLite/Other rls_policies auto-migration succeeded")
+                except Exception:
+                    # Column might already exist
+                    pass
+        except Exception as e:
+            logger.warning("Auto-migration of rls_policies failed", error=str(e))
+            
     yield
     logger.info("DataBridge shutting down")
 

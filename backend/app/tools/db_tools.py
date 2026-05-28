@@ -192,7 +192,8 @@ def _build_user_context(user: User) -> dict:
 
 
 def _connector_sqlglot_dialect(connector: Connector) -> str:
-    return SQLGLOT_DIALECT_MAP.get(str(connector.type).lower(), "")
+    db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
+    return SQLGLOT_DIALECT_MAP.get(db_type, "")
 
 
 async def _execute_on_connector(connector: Connector, query: str) -> dict:
@@ -461,10 +462,22 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
     if not await check_connector_permission(db_id, op, ctx.user, ctx.db):
         return f"Error: Permission denied -- no '{op.upper()}' access on '{connector.name}'."
 
-    if op == "read" and not query.strip().startswith("{"):
-        rls_policies = await _get_rls_policies(ctx, db_id)
-        if rls_policies:
-            user_ctx = _build_user_context(ctx.user)
+    rls_policies = await _get_rls_policies(ctx, db_id)
+    if rls_policies:
+        user_ctx = _build_user_context(ctx.user)
+        db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
+        if query.strip().startswith("{"):
+            # NoSQL RLS injection
+            from app.tools.nosql_rls import apply_rls_nosql
+            query = apply_rls_nosql(query, db_type, rls_policies, user_ctx)
+            try:
+                q_obj = json.loads(query)
+                if isinstance(q_obj, dict) and "error" in q_obj:
+                    return f"Error: Permission denied -- {q_obj['error']}"
+            except Exception:
+                pass
+        elif op == "read":
+            # SQL RLS injection (existing logic)
             tables_in_cache = (connector.schema_cache or {}).get("tables", [])
             for table in tables_in_cache:
                 bare_name = table["name"]
@@ -523,7 +536,7 @@ async def tool_create_record(
     if not await check_connector_permission(db_id, "create", ctx.user, ctx.db):
         return f"Error: Permission denied -- no CREATE access on '{connector.name}'."
 
-    db_type = str(connector.type).lower()
+    db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
 
     try:
         if db_type == "mongodb":
@@ -539,6 +552,19 @@ async def tool_create_record(
             cols = ", ".join(data.keys())
             vals = ", ".join(_safe_val(v) for v in data.values())
             query = f"INSERT INTO {table_or_collection} ({cols}) VALUES ({vals}) RETURNING *"
+
+        if query.strip().startswith("{"):
+            rls_policies = await _get_rls_policies(ctx, db_id)
+            if rls_policies:
+                user_ctx = _build_user_context(ctx.user)
+                from app.tools.nosql_rls import apply_rls_nosql
+                query = apply_rls_nosql(query, db_type, rls_policies, user_ctx)
+                try:
+                    q_obj = json.loads(query)
+                    if isinstance(q_obj, dict) and "error" in q_obj:
+                        return f"Error: Permission denied -- {q_obj['error']}"
+                except Exception:
+                    pass
 
         result = await _execute_on_connector(connector, query)
         result["operation"] = "create"
@@ -567,7 +593,7 @@ async def tool_update_record(
     if not await check_connector_permission(db_id, "update", ctx.user, ctx.db):
         return f"Error: Permission denied -- no UPDATE access on '{connector.name}'."
 
-    db_type = str(connector.type).lower()
+    db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
 
     try:
         if db_type == "mongodb":
@@ -580,6 +606,19 @@ async def tool_update_record(
             set_clause = ", ".join(f"{k} = {_safe_val(v)}" for k, v in updates.items())
             id_val = _safe_val(record_id)
             query = f"UPDATE {table_or_collection} SET {set_clause} WHERE {id_field} = {id_val}"
+
+        if query.strip().startswith("{"):
+            rls_policies = await _get_rls_policies(ctx, db_id)
+            if rls_policies:
+                user_ctx = _build_user_context(ctx.user)
+                from app.tools.nosql_rls import apply_rls_nosql
+                query = apply_rls_nosql(query, db_type, rls_policies, user_ctx)
+                try:
+                    q_obj = json.loads(query)
+                    if isinstance(q_obj, dict) and "error" in q_obj:
+                        return f"Error: Permission denied -- {q_obj['error']}"
+                except Exception:
+                    pass
 
         result = await _execute_on_connector(connector, query)
         result["operation"] = "update"
@@ -608,7 +647,7 @@ async def tool_delete_record(
     if not await check_connector_permission(db_id, "delete", ctx.user, ctx.db):
         return f"Error: Permission denied -- no DELETE access on '{connector.name}'."
 
-    db_type = str(connector.type).lower()
+    db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
 
     try:
         if db_type == "mongodb":
@@ -620,6 +659,19 @@ async def tool_delete_record(
         else:
             id_val = _safe_val(record_id)
             query = f"DELETE FROM {table_or_collection} WHERE {id_field} = {id_val}"
+
+        if query.strip().startswith("{"):
+            rls_policies = await _get_rls_policies(ctx, db_id)
+            if rls_policies:
+                user_ctx = _build_user_context(ctx.user)
+                from app.tools.nosql_rls import apply_rls_nosql
+                query = apply_rls_nosql(query, db_type, rls_policies, user_ctx)
+                try:
+                    q_obj = json.loads(query)
+                    if isinstance(q_obj, dict) and "error" in q_obj:
+                        return f"Error: Permission denied -- {q_obj['error']}"
+                except Exception:
+                    pass
 
         result = await _execute_on_connector(connector, query)
         result["operation"] = "delete"

@@ -153,10 +153,16 @@ class RLSPolicy(Base):
     A policy is a filter condition applied automatically to every query
     for a given user/role on a given table.
 
-    Example:
-      table = "employees"
-      filter_column = "department_id"
-      filter_value = "{user.department_id}"   ← resolved at query time
+    For SQL connectors, use `filter_expr` (a SQL WHERE fragment).
+    For NoSQL connectors, use `filter_expr_nosql` (a JSON filter object).
+    At least one of the two must be provided.
+
+    Example (SQL):
+      filter_expr = "department_id = '{user.id}'"
+    Example (MongoDB):
+      filter_expr_nosql = {"field": "org_id", "op": "eq", "value": "{user.id}"}
+    Example (Redis):
+      filter_expr_nosql = {"key_pattern": "org:{user.id}:*"}
     """
     __tablename__ = "rls_policies"
 
@@ -165,7 +171,9 @@ class RLSPolicy(Base):
     name         = Column(String, nullable=False)
     table_name   = Column(String, nullable=False)
     # SQL WHERE fragment, supports {user.id}, {user.email}, {user.metadata.X}
-    filter_expr  = Column(Text, nullable=False)
+    filter_expr  = Column(Text, nullable=True)
+    # NoSQL filter object (MongoDB $match, ES bool filter, Redis key pattern)
+    filter_expr_nosql = Column(JSON, nullable=True)
     # Apply to: specific user, or a role
     applies_to_user_id = Column(UUID(as_uuid=False), ForeignKey("users.id"), nullable=True)
     applies_to_role    = Column(SAEnum(UserRole), nullable=True)

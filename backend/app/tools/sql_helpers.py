@@ -94,10 +94,10 @@ def apply_rls(
     rls_conditions = []
     
     for policy in policies:
-        # Each policy has a filter_expression (SQL WHERE clause)
-        if hasattr(policy, "filter_expression") and policy.filter_expression:
+        # Each policy has a filter_expr (SQL WHERE clause)
+        if hasattr(policy, "filter_expr") and policy.filter_expr:
             # Substitute user variables in the filter
-            filter_expr = str(policy.filter_expression)
+            filter_expr = str(policy.filter_expr)
             
             # Simple substitution: replace {user_id}, {user_email}, {user_name}
             filter_expr = filter_expr.replace("{user_id}", str(user_context.get("id", "")))

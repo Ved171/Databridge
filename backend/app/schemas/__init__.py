@@ -104,7 +104,8 @@ class PermissionOut(BaseModel):
 class RLSPolicyCreate(BaseModel):
     name: str
     table_name: str
-    filter_expr: str
+    filter_expr: Optional[str] = None          # SQL WHERE fragment (for SQL connectors)
+    filter_expr_nosql: Optional[Dict] = None   # JSON filter (for NoSQL connectors)
     applies_to_user_id: Optional[str] = None
     applies_to_role: Optional[UserRole] = None
 
@@ -112,6 +113,7 @@ class RLSPolicyUpdate(BaseModel):
     name: Optional[str] = None
     table_name: Optional[str] = None
     filter_expr: Optional[str] = None
+    filter_expr_nosql: Optional[Dict] = None
     applies_to_user_id: Optional[str] = None
     applies_to_role: Optional[UserRole] = None
 
@@ -120,7 +122,8 @@ class RLSPolicyOut(BaseModel):
     connector_id: str
     name: str
     table_name: str
-    filter_expr: str
+    filter_expr: Optional[str] = None
+    filter_expr_nosql: Optional[Dict] = None
     applies_to_user_id: Optional[str]
     applies_to_role: Optional[UserRole]
     is_active: bool

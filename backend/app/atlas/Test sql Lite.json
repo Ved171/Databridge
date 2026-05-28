@@ -1,0 +1,1332 @@
+{
+  "metadata": {
+    "connector_id": "1dfc08b1-c5ea-4899-ab34-e63fa8dd9ce6",
+    "connector_type": "sqlite",
+    "db_name": "Test sql Lite",
+    "table_count": 24,
+    "last_updated": "2026-05-28T11:16:37.108301Z",
+    "schema_version": "1.0"
+  },
+  "tables": [
+    {
+      "name": "migratehistory",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "migrated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "chatidtag",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "tag_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "chat_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "timestamp",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "auth",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "password",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "active",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "chat",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "share_id",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "archived",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "chat",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "pinned",
+          "type": "BOOLEAN",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "folder_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "document",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "collection_name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "filename",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "timestamp",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "prompt",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "command",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "timestamp",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "user",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "email",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "role",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "profile_image_url",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "api_key",
+          "type": "VARCHAR(255)",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "last_active_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "settings",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "info",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "oauth_sub",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "username",
+          "type": "VARCHAR(50)",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "bio",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "gender",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "date_of_birth",
+          "type": "DATE",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "memory",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "model",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "base_model_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "params",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "tool",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "specs",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "valves",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "function",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "type",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "valves",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "is_active",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "is_global",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "alembic_version",
+      "schema": null,
+      "columns": [
+        {
+          "name": "version_num",
+          "type": "VARCHAR(32)",
+          "nullable": false,
+          "primary_key": true
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "config",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "version",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "DATETIME",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "DATETIME",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "knowledge",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "tag",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "name",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "VARCHAR(255)",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "file",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "filename",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "INTEGER",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "hash",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "path",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "feedback",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "version",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "type",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "snapshot",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "folder",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "parent_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "items",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "is_expanded",
+          "type": "BOOLEAN",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "group",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "permissions",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "user_ids",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "channel",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "description",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "type",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "message",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "channel_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "content",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "parent_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "message_reaction",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "message_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "name",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "channel_member",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "channel_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    },
+    {
+      "name": "note",
+      "schema": null,
+      "columns": [
+        {
+          "name": "id",
+          "type": "TEXT",
+          "nullable": false,
+          "primary_key": true
+        },
+        {
+          "name": "user_id",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "title",
+          "type": "TEXT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "data",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "meta",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "access_control",
+          "type": "JSON",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "created_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        },
+        {
+          "name": "updated_at",
+          "type": "BIGINT",
+          "nullable": true,
+          "primary_key": false
+        }
+      ],
+      "gotcha": "",
+      "learned_filter": "",
+      "summary": ""
+    }
+  ]
+}
