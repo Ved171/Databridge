@@ -12,9 +12,12 @@ class MSSQLConnector(BaseConnector):
     def _get_conn(self):
         import pyodbc
         cfg = self.config
+        # Safely parse port to avoid ValueError/connection failure on empty string input
+        port_val = cfg.get("port")
+        port = int(port_val) if port_val and str(port_val).strip() else 1433
         conn_str = (
             f"DRIVER={{ODBC Driver 17 for SQL Server}};"
-            f"SERVER={cfg['host']},{cfg.get('port', 1433)};"
+            f"SERVER={cfg['host']},{port};"
             f"DATABASE={cfg['database']};"
             f"UID={cfg['user']};PWD={cfg['password']};"
             f"Connection Timeout={cfg.get('connect_timeout', 10)};"

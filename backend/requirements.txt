@@ -1,4 +1,6 @@
+# =========================
 # Core
+# =========================
 fastapi==0.111.0
 uvicorn[standard]==0.35.0
 sqlalchemy[asyncio]==2.0.30
@@ -13,30 +15,61 @@ cryptography==42.0.8
 redis[asyncio]==5.0.4
 httpx==0.28.1
 
+# =========================
+# LLM / AI
+# =========================
+anthropic>=0.40.0
+openai==2.32.0
+
+# LangChain / Agentic Framework
+langchain==1.2.15
+langgraph==1.1.8
+langchain-openai==1.1.15
+langchain-community==0.4.1
+langchain-anthropic>=0.2.0
+
+# =========================
 # Relational DB Connectors
+# =========================
 asyncpg==0.29.0           # PostgreSQL async
 aiomysql==0.2.0           # MySQL async
 aiosqlite==0.20.0         # SQLite async
-psycopg2-binary==2.9.9    # PostgreSQL sync (schema tools)
+psycopg2-binary==2.9.9    # PostgreSQL sync
 pymysql==1.1.1            # MySQL sync
 
+# MSSQL
+pyodbc==5.0.1             # Requires ODBC driver
+pymssql==2.3.1            # Pure Python alternative
+pymssql==2.3.1
+
+# Oracle
+oracledb==2.3.0           # Pure Python Oracle driver
+# cx_Oracle==8.3.0        # Legacy Oracle driver
+
+# =========================
 # NoSQL Connectors
+# =========================
 motor==3.4.0              # MongoDB async
 pymongo==4.7.2            # MongoDB sync
-elasticsearch[async]==8.13.0  # Elasticsearch
+elasticsearch[async]==8.13.0
 
-# Cloud / SaaS Connectors (install as needed)
-# snowflake-connector-python==3.10.0
-# simple-salesforce==1.12.5
-pyodbc==5.0.1             # MSSQL (requires ODBC driver)
-# cx_Oracle==8.3.0         # Oracle
+# =========================
+# Cloud / SaaS Connectors
+# =========================
+snowflake-connector-python==3.10.0
+simple-salesforce==1.12.5
 
+# =========================
 # Utilities
+# =========================
+pandas==2.2.2
 pyarrow>=14.0.0
 sqlglot==23.12.2
 duckdb>=0.10.0
 tenacity==8.3.0
 structlog==24.2.0
 
+# =========================
 # MCP Server
+# =========================
 fastmcp==3.2.4
