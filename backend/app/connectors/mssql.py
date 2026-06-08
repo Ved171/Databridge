@@ -46,22 +46,20 @@ class MSSQLConnector(BaseConnector):
             conn = self._get_conn()
             cur = conn.cursor()
             cur.execute("""
-                SELECT t.TABLE_SCHEMA, t.TABLE_NAME, c.COLUMN_NAME, c.DATA_TYPE,
-                       c.IS_NULLABLE,
-                       CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 1 ELSE 0 END as IS_PK
-                FROM INFORMATION_SCHEMA.TABLES t
-                JOIN INFORMATION_SCHEMA.COLUMNS c
-                  ON t.TABLE_NAME = c.TABLE_NAME AND t.TABLE_SCHEMA = c.TABLE_SCHEMA
-                LEFT JOIN (
-                    SELECT ku.COLUMN_NAME, ku.TABLE_NAME, ku.TABLE_SCHEMA
-                    FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
-                    JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE ku
-                      ON tc.CONSTRAINT_NAME = ku.CONSTRAINT_NAME
-                    WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
-                ) pk ON pk.TABLE_NAME = t.TABLE_NAME AND pk.TABLE_SCHEMA = t.TABLE_SCHEMA
-                         AND pk.COLUMN_NAME = c.COLUMN_NAME
-                WHERE t.TABLE_TYPE = 'BASE TABLE'
-                ORDER BY t.TABLE_SCHEMA, t.TABLE_NAME, c.ORDINAL_POSITION
+                SELECT 
+                    s.name AS SchemaName,
+                    t.name AS TableName,
+                    c.name AS ColumnName,
+                    ty.name AS DataType,
+                    CASE WHEN c.is_nullable = 1 THEN 'YES' ELSE 'NO' END AS IsNullable,
+                    CASE WHEN ic.column_id IS NOT NULL THEN 1 ELSE 0 END AS IsPrimaryKey
+                FROM sys.tables t
+                INNER JOIN sys.schemas s ON t.schema_id = s.schema_id
+                INNER JOIN sys.columns c ON t.object_id = c.object_id
+                INNER JOIN sys.types ty ON c.user_type_id = ty.user_type_id
+                LEFT JOIN sys.indexes idx ON idx.object_id = t.object_id AND idx.is_primary_key = 1
+                LEFT JOIN sys.index_columns ic ON ic.object_id = c.object_id AND ic.column_id = c.column_id AND ic.index_id = idx.index_id
+                ORDER BY SchemaName, TableName, c.column_id
             """)
             rows = cur.fetchall()
             conn.close()

@@ -129,7 +129,7 @@ class AtlasBuilder:
         }
         
         path = self._get_atlas_path(db_name)
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(atlas, f, indent=2)
         
         logger.info(f"Built atlas for {db_name}: {len(tables)} tables -> {path}")
@@ -151,7 +151,7 @@ class AtlasBuilder:
             return None
         
         try:
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 atlas = json.load(f)
             logger.debug(f"Loaded atlas for {db_name} from {path}")
             return atlas
@@ -171,7 +171,7 @@ class AtlasBuilder:
         """
         for path in self.list_atlas_files():
             try:
-                with open(path, "r") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     atlas = json.load(f)
                 atlas_connector_id = atlas.get("metadata", {}).get("connector_id")
                 if atlas_connector_id == connector_id:
@@ -197,7 +197,7 @@ class AtlasBuilder:
         result = {}
         for path in self.list_atlas_files():
             try:
-                with open(path, "r") as f:
+                with open(path, "r", encoding="utf-8") as f:
                     atlas = json.load(f)
                 connector_id = atlas.get("metadata", {}).get("connector_id")
                 if connector_id:

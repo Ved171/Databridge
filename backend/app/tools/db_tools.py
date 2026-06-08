@@ -164,10 +164,10 @@ async def _get_active_connector(ctx: ToolContext, db_id: str) -> Optional[Connec
 
 
 async def _get_rls_policies(ctx: ToolContext, db_id: str) -> list:
-    from sqlalchemy import select, or_, and_, cast, String
+    from sqlalchemy import select, or_, and_, cast, String, func
 
     user_id_str = str(ctx.user.id)
-    user_role_str = ctx.user.role
+    user_role_str = (ctx.user.role or "member").strip().lower()
 
     result = await ctx.db.execute(
         select(RLSPolicy).where(
@@ -175,12 +175,16 @@ async def _get_rls_policies(ctx: ToolContext, db_id: str) -> list:
             RLSPolicy.is_active == True,
             or_(
                 RLSPolicy.applies_to_user_id == user_id_str,
-                cast(RLSPolicy.applies_to_role, String) == user_role_str,
+                func.lower(cast(RLSPolicy.applies_to_role, String)) == user_role_str,
                 and_(RLSPolicy.applies_to_user_id.is_(None), RLSPolicy.applies_to_role.is_(None))
             )
         )
     )
-    return result.scalars().all()
+    policies = result.scalars().all()
+    if policies:
+        logger.info("RLS: found %d active policies for connector=%s user=%s (role=%s)",
+                     len(policies), db_id, user_id_str, user_role_str)
+    return policies
 
 
 def _build_user_context(user: User) -> dict:
@@ -477,14 +481,17 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
             except Exception:
                 pass
         elif op == "read":
-            # SQL RLS injection (existing logic)
+            # SQL RLS injection — pass each schema-qualified table once
             tables_in_cache = (connector.schema_cache or {}).get("tables", [])
+            applied_tables = set()
             for table in tables_in_cache:
                 bare_name = table["name"]
-                schema_name = f"{table.get('schema')}.{bare_name}" if table.get("schema") else bare_name
-                query = apply_rls(query, rls_policies, bare_name, user_ctx)
-                if bare_name != schema_name:
-                    query = apply_rls(query, rls_policies, schema_name, user_ctx)
+                schema_prefix = table.get("schema")
+                full_name = f"{schema_prefix}.{bare_name}" if schema_prefix else bare_name
+                if full_name.lower() in applied_tables:
+                    continue
+                applied_tables.add(full_name.lower())
+                query = apply_rls(query, rls_policies, full_name, user_ctx, dialect=dialect)
 
     if op == "read":
         cached = await _cache.get(db_id, query)

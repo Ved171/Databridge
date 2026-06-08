@@ -157,8 +157,13 @@ class RLSPolicy(Base):
     For NoSQL connectors, use `filter_expr_nosql` (a JSON filter object).
     At least one of the two must be provided.
 
+    Supported placeholders (both formats accepted):
+      Underscore:  {user_id}, {user_email}, {user_name}
+      Dot:         {user.id}, {user.email}, {user.name}
+
     Example (SQL):
-      filter_expr = "department_id = '{user.id}'"
+      filter_expr = "department_id = '{user_id}'"
+      filter_expr = "Email = '{user_email}'"
     Example (MongoDB):
       filter_expr_nosql = {"field": "org_id", "op": "eq", "value": "{user.id}"}
     Example (Redis):

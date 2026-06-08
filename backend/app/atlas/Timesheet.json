@@ -4,7 +4,7 @@
     "connector_type": "postgres",
     "db_name": "Timesheet ",
     "table_count": 149,
-    "last_updated": "2026-05-26T09:34:03.701550Z",
+    "last_updated": "2026-06-05T05:57:06.890962Z",
     "schema_version": "1.0"
   },
   "tables": [

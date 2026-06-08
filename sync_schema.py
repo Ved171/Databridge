@@ -789,7 +789,7 @@ def main():
 
         if mapping_path:
             print(f"📂 Reading schema source mapping: {mapping_path}")
-            with open(mapping_path, "r") as f:
+            with open(mapping_path, "r", encoding="utf-8") as f:
                 sources = json.load(f)
 
             for db_name, db_info in sources.items():
@@ -904,7 +904,7 @@ def main():
 
         # Check JSON validity
         try:
-            with open(full_json_path, "r") as f:
+            with open(full_json_path, "r", encoding="utf-8") as f:
                 full_data = json.load(f)
             print("  ✅ Full JSON is valid")
         except json.JSONDecodeError as e:
@@ -912,7 +912,7 @@ def main():
             print(f"  ❌ Full JSON is invalid: {e}")
 
         try:
-            with open(min_json_path, "r") as f:
+            with open(min_json_path, "r", encoding="utf-8") as f:
                 min_data = json.load(f)
             print("  ✅ Minified JSON is valid")
         except json.JSONDecodeError as e:

@@ -439,15 +439,20 @@ def normalize_query_casings(
             if not matched:
                 continue
 
-            # Rewrite table identifier casing (preserve original quoting)
+            # Rewrite table identifier casing
+            # Force quoting if the name has mixed case (PostgreSQL lowercases unquoted identifiers)
+            correct_name = matched["name"]
+            needs_quote = correct_name != correct_name.lower()
             this_node = table.args.get("this")
-            this_quoted = this_node.args.get("quoted", False) if this_node else False
-            table.set("this", exp.to_identifier(matched["name"], quoted=this_quoted))
+            this_quoted = needs_quote or (this_node.args.get("quoted", False) if this_node else False)
+            table.set("this", exp.to_identifier(correct_name, quoted=this_quoted))
 
             if table.db and matched.get("schema"):
+                correct_schema = matched["schema"]
+                schema_needs_quote = correct_schema != correct_schema.lower()
                 db_node = table.args.get("db")
-                db_quoted = db_node.args.get("quoted", False) if db_node else False
-                table.set("db", exp.to_identifier(matched["schema"], quoted=db_quoted))
+                db_quoted = schema_needs_quote or (db_node.args.get("quoted", False) if db_node else False)
+                table.set("db", exp.to_identifier(correct_schema, quoted=db_quoted))
 
             # Register for column lookups
             if table.alias:
@@ -479,13 +484,18 @@ def normalize_query_casings(
                     if target_name:
                         break
 
-            if target_name and target_name != col.name:
-                is_quoted = col.this.args.get("quoted", False)
-                col.set("this", exp.to_identifier(target_name, quoted=is_quoted))
+            if target_name:
+                # Force quoting if the correct name has mixed case
+                # (PostgreSQL lowercases unquoted identifiers)
+                needs_quote = target_name != target_name.lower()
+                current_quoted = col.this.args.get("quoted", False)
+                if target_name != col.name or (needs_quote and not current_quoted):
+                    is_quoted = needs_quote or current_quoted
+                    col.set("this", exp.to_identifier(target_name, quoted=is_quoted))
 
         normalised = tree.sql(dialect=dialect)
         if normalised != sql:
-            logger.info("Casing normalised: %s -> %s", sql[:120], normalised[:120])
+            logger.info("Casing normalised: %s -> %s", sql[:200], normalised[:200])
         return normalised
 
     except Exception as exc:
