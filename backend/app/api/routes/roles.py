@@ -382,6 +382,7 @@ async def assign_manager(
 ):
     """
     Assign a manager to a user. Superadmin/Admin only.
+    Manager and member must be in the same department.
     """
     manager_id = payload.get("manager_id")
     
@@ -392,11 +393,25 @@ async def assign_manager(
     
     if manager_id:
         m_res = await db.execute(select(User).where(User.id == manager_id))
-        if not m_res.scalar_one_or_none():
+        manager = m_res.scalar_one_or_none()
+        if not manager:
             raise HTTPException(status_code=404, detail="Manager not found")
             
         if str(manager_id) == str(id):
             raise HTTPException(status_code=400, detail="A user cannot be their own manager.")
+        
+        # Get member user
+        member_res = await db.execute(select(User).where(User.id == id))
+        member = member_res.scalar_one_or_none()
+        if not member:
+            raise HTTPException(status_code=404, detail="Member not found")
+        
+        # Validate that both manager and member belong to the same department
+        if not manager.department_id or not member.department_id or manager.department_id != member.department_id:
+            raise HTTPException(
+                status_code=400, 
+                detail="Manager and member must belong to the same department."
+            )
             
         db.add(UserManagerAssignment(
             manager_user_id=manager_id,
