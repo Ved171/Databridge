@@ -54,5 +54,5 @@ sqlite_data/
 *.env
 !.env.example
 
-# ─── Application Specific ─────────────────────────────────────────────────────
-backend/app/atlas/
+backend/app/atlas/*
+!backend/app/atlas/.gitkeep
