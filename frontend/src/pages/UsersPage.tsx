@@ -12,10 +12,10 @@ interface PromoteTarget {
 }
 
 const ROLE_OPTIONS = [
-  { value: 'member',          label: 'Member',          desc: 'Standard user with basic read access',          color: 'bg-gray-100 text-gray-700 border-gray-200', rank: 1 },
-  { value: 'workspace_admin', label: 'Workspace Admin', desc: 'Can manage connectors and workspace members',   color: 'bg-purple-50 text-purple-700 border-purple-200', rank: 2 },
-  { value: 'admin',           label: 'Admin',           desc: 'Full access - manage users, connectors, and all settings', color: 'bg-brand-50 text-brand-700 border-brand-200', rank: 3 },
-  { value: 'superadmin',      label: 'Super Admin',     desc: 'System-wide full access', color: 'bg-red-50 text-red-700 border-red-200', rank: 4 },
+  { value: 'member', label: 'Member', desc: 'Standard user with basic read access', color: 'bg-gray-100 text-gray-700 border-gray-200', rank: 1 },
+  { value: 'workspace_admin', label: 'Workspace Admin', desc: 'Can manage connectors and workspace members', color: 'bg-purple-50 text-purple-700 border-purple-200', rank: 2 },
+  { value: 'admin', label: 'Admin', desc: 'Full access - manage users, connectors, and all settings', color: 'bg-brand-50 text-brand-700 border-brand-200', rank: 3 },
+  { value: 'superadmin', label: 'Super Admin', desc: 'System-wide full access', color: 'bg-red-50 text-red-700 border-red-200', rank: 4 },
 ]
 
 export function UsersPage() {
@@ -140,15 +140,14 @@ export function UsersPage() {
                             className="btn-secondary text-xs py-1.5 flex items-center gap-1"
                             onClick={() => openPromoteModal(u)}
                           >
-                             Change Role
+                            Change Role
                           </button>
 
                           <button
-                            className={`text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 border transition-colors ${
-                              u.is_active
+                            className={`text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 border transition-colors ${u.is_active
                                 ? 'border-red-200 text-red-600 hover:bg-red-50'
                                 : 'border-green-200 text-green-600 hover:bg-green-50'
-                            }`}
+                              }`}
                             onClick={() => toggleActive.mutate(u.id)}
                           >
                             {u.is_active
@@ -203,11 +202,10 @@ export function UsersPage() {
               }).map((opt) => (
                 <label
                   key={opt.value}
-                  className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedRole === opt.value
+                  className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${selectedRole === opt.value
                       ? opt.color + ' border-current'
                       : 'border-gray-100 hover:border-gray-200 bg-white'
-                  }`}
+                    }`}
                 >
                   <input
                     type="radio"

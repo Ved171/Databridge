@@ -8,6 +8,9 @@ interface User {
   is_superadmin: boolean
   is_active: boolean
   role: string
+  force_password_change?: boolean
+  has_direct_reports?: boolean
+  share_access_connector_ids?: string[]
 }
 
 interface AuthState {

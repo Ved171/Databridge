@@ -2,32 +2,107 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-bg-base: #faf9f5;
+  --color-bg-surface: #f4f4f0;
+  --color-bg-card: #ffffff;
+  --color-bg-overlay: #efeeea;
+
+  --color-border-default: #E8E6DF;
+  --color-border-muted: #efeeea;
+  --color-border-strong: #cbc6bd;
+
+  --color-text-primary: #1b1c1a;
+  --color-text-secondary: #494740;
+  --color-text-muted: #6B6A65;
+  --color-text-subtle: #7a776f;
+  --color-text-inverse: #ffffff;
+
+  --color-accent-50: #eef4f5;
+  --color-accent-100: #d5e5e8;
+  --color-accent-200: #adc9cf;
+  --color-accent-300: #7fa8b0;
+  --color-accent-400: #5c8d96;
+  --color-accent-500: #48757c;
+  --color-accent-600: #3a5f65;
+  --color-accent-700: #2f4d52;
+  --color-accent-900: #1a2d30;
+
+  --color-sidebar-bg: #dbdad6;
+  --color-sidebar-hover: #d0cec8;
+  --color-sidebar-border: #cbc6bd;
+  --color-sidebar-text: #494740;
+  --color-sidebar-active: #e9e8e4;
+
+  --shadow-card: 0 4px 12px -2px rgba(26, 25, 22, 0.05);
+}
+
 @layer base {
   body {
-    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply bg-surface font-body text-on-surface antialiased;
   }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-brand-600 hover:bg-brand-700 text-white font-medium px-4 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+    @apply bg-accent-500 hover:opacity-90 text-white font-medium px-4 py-2 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-accent-500;
   }
   .btn-secondary {
-    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-200 transition-colors;
+    @apply bg-surface-container-low hover:opacity-90 text-on-surface font-medium px-4 py-2 rounded border border-border-default transition-colors focus:outline-none focus:ring-1 focus:ring-accent-500;
   }
   .btn-danger {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors;
+    @apply bg-error hover:opacity-90 text-white font-medium px-4 py-2 rounded transition-colors focus:outline-none focus:ring-1 focus:ring-error;
   }
   .card {
-    @apply bg-white rounded-xl border border-gray-200 shadow-sm;
+    @apply bg-white rounded-card border border-border-default;
+    box-shadow: var(--shadow-card);
   }
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent;
+    @apply w-full px-3 py-2 bg-surface-container-low border border-border-default rounded text-sm text-on-surface placeholder:text-text-muted transition-colors focus:outline-none focus:ring-1 focus:ring-accent-500 focus:border-accent-500;
   }
   .label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-on-surface mb-1;
   }
   .badge {
-    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-mono font-medium uppercase tracking-wider;
+  }
+  .badge-success {
+    @apply badge bg-success-bg text-success border border-success-border;
+  }
+  .badge-warning {
+    @apply badge bg-warning-bg text-warning border border-warning-border;
+  }
+  .badge-error {
+    @apply badge bg-error-bg text-error border border-error-border;
+  }
+  .divider {
+    @apply border-t border-border-default;
+  }
+  .surface-hover {
+    @apply transition-colors hover:bg-surface-container-low;
+  }
+  .form-section-label {
+    @apply font-mono text-[11px] font-medium text-text-muted uppercase tracking-widest mb-3;
+  }
+  .help-text {
+    @apply text-xs text-text-muted mt-1;
+  }
+  .headline-xl {
+    @apply font-headline text-[24px] md:text-[32px] font-extrabold leading-tight text-on-surface;
+  }
+  .headline-lg {
+    @apply font-headline text-[20px] md:text-2xl font-bold leading-snug text-on-surface;
+  }
+  .label-md {
+    @apply font-mono text-xs font-medium uppercase tracking-wider;
+  }
+  .label-sm {
+    @apply font-mono text-[11px] font-medium uppercase tracking-widest;
+  }
+  .progress-track {
+    @apply h-1 bg-surface-container rounded-full overflow-hidden;
+  }
+  .progress-fill {
+    @apply h-full bg-accent-500 rounded-full;
   }
 }

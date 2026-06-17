@@ -99,10 +99,10 @@ const MCP_TOOLS = [
 ]
 
 const PERMISSION_COLORS: Record<string, string> = {
-  READ:   'bg-blue-100 text-blue-700',
-  CREATE: 'bg-green-100 text-green-700',
-  UPDATE: 'bg-orange-100 text-orange-700',
-  DELETE: 'bg-red-100 text-red-700',
+  READ: 'bg-accent-50 text-accent-700 border border-accent-100',
+  CREATE: 'bg-success-bg text-success border border-success-border',
+  UPDATE: 'bg-warning-bg text-warning border border-warning-border',
+  DELETE: 'bg-error-bg text-error border border-error-border',
 }
 
 const CATEGORY_ORDER = ['Discovery', 'Query', 'Write', 'Metadata']
@@ -138,26 +138,34 @@ export function MCPPage() {
 
   const claudeConfig = JSON.stringify({
     mcpServers: {
-      databridge: {
-        url: mcpUrl,
-        headers: { Authorization: `Bearer ${token || 'YOUR_JWT_TOKEN'}` },
-      },
-    },
+      "databridge": {
+        command: "cmd",
+        args: [
+          "/c",
+          "npx",
+          "mcp-remote",
+          "http://localhost:9000/mcp",
+          "--allow-http",
+          "--header",
+          `Authorization:Bearer ${token || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhY2FiYTAzOS0xMmQxLTQyNDktYTJhMS0yZGZlZDYyMGE1ZmEiLCJleHAiOjE3ODA5OTgxNDN9.FbuTua2qrbfEeood58tLVyYaHmMTC7rf0XE-hypE8EA'}`
+        ]
+      }
+    }
   }, null, 2)
 
   const cursorConfig = JSON.stringify({
     mcpServers: {
-      "databridge-remote": {
+      "databridge": {
         command: "npx",
         args: [
           "mcp-remote",
-          mcpUrl,
+          "http://localhost:9000/mcp",
           "--allow-http",
           "--header",
-          `Authorization:Bearer ${token || 'YOUR_JWT_TOKEN'}`
+          `Authorization:Bearer ${token || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhYzAyZDQzMi01ZThiLTRjZTMtOGI0Ny1hMmRmYWQ4YTVhYzQiLCJ0b2tlbl92ZXJzaW9uIjoxLCJleHAiOjE3ODE1ODA5MjF9.PkVCWbWGCW-lvD9zyae3XmdBeS0gpm4eg8w2Fu03n58'}`
         ]
-      },
-    },
+      }
+    }
   }, null, 2)
 
   const grouped = CATEGORY_ORDER.map(cat => ({
@@ -166,132 +174,146 @@ export function MCPPage() {
   }))
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
+    <div className="p-8 max-w-5xl mx-auto space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-xl font-semibold text-gray-900">MCP Server</h1>
-        <p className="text-sm text-gray-500 mt-0.5">
-          Connect Claude, Cursor, Gemini CLI, or any MCP-compatible AI agent to DataBridge
+        <h1 className="headline-lg mb-1 flex items-center gap-2 text-on-surface">
+          <Server className="w-6 h-6 text-on-surface-variant" />
+          MCP Server Configuration
+        </h1>
+        <p className="text-sm text-text-muted">
+          Connect Claude Desktop, Cursor, Gemini CLI, or any MCP-compatible AI agent directly to DataBridge
         </p>
       </div>
 
       {/* Server Status */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-sm font-semibold text-gray-800">MCP Server Active</span>
-          <span className="text-xs text-gray-400 ml-auto">Streamable HTTP Transport</span>
-        </div>
+      <div className="card p-6 space-y-4">
         <div className="flex items-center gap-3">
-          <div className="flex-1 bg-gray-900 rounded-lg px-4 py-2.5 font-mono text-sm text-green-400">
+          <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
+          <span className="text-sm font-semibold text-on-surface">MCP Server Active</span>
+          <span className="text-xs text-text-muted ml-auto font-mono">Streamable HTTP Transport</span>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex-1 bg-surface-container-low border border-border-default rounded-lg px-4 py-3 font-mono text-sm text-on-surface select-all break-all flex items-center">
             {mcpUrl}
           </div>
           <button
             onClick={() => copy(mcpUrl, 'url')}
-            className="flex items-center gap-1.5 text-sm px-3 py-2.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+            className="flex items-center justify-center gap-2 text-sm px-4 py-3 border border-border-default rounded hover:bg-surface-container-low text-on-surface font-semibold transition-colors bg-white flex-shrink-0"
           >
-            {copied === 'url' ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-            {copied === 'url' ? 'Copied!' : 'Copy'}
+            {copied === 'url' ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4 text-text-muted" />}
+            {copied === 'url' ? 'Copied!' : 'Copy Server URL'}
           </button>
         </div>
       </div>
 
       {/* Tools */}
-      <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="card overflow-hidden">
+        <div className="px-6 py-5 border-b border-border-default flex flex-col md:flex-row md:items-center justify-between gap-4 bg-surface-container-lowest">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">{MCP_TOOLS.length} Available Tools</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Permission-enforced - RLS injection - Cross-DB federation via DuckDB</p>
+            <h2 className="text-base font-bold text-on-surface">{MCP_TOOLS.length} Available Tools</h2>
+            <p className="text-xs text-text-muted mt-0.5">Permission-enforced • Row-Level Security • Cross-DB federation via DuckDB</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {CATEGORY_ORDER.map(cat => (
-              <span key={cat} className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-600 font-medium">
+              <span key={cat} className="text-[11px] px-2.5 py-1 rounded bg-surface-container text-on-surface-variant font-medium border border-border-default uppercase tracking-wider font-mono">
                 {cat} ({MCP_TOOLS.filter(t => t.category === cat).length})
               </span>
             ))}
           </div>
         </div>
-        <div className="divide-y divide-gray-50">
+        <div className="divide-y divide-border-default">
           {grouped.map(({ category, tools }) => (
             <div key={category}>
-              <div className="px-5 py-2 bg-gray-50">
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{category}</span>
+              <div className="px-6 py-2 bg-surface-container-low border-b border-border-default">
+                <span className="text-[10px] font-bold text-text-muted uppercase tracking-widest font-mono">{category}</span>
               </div>
-              {tools.map(tool => {
-                const Icon = tool.icon
-                const colorMap: Record<string, string> = {
-                  blue: 'bg-blue-50 text-blue-600', green: 'bg-green-50 text-green-600',
-                  amber: 'bg-amber-50 text-amber-600', purple: 'bg-purple-50 text-purple-600',
-                  orange: 'bg-orange-50 text-orange-600', red: 'bg-red-50 text-red-600',
-                  teal: 'bg-teal-50 text-teal-600',
-                }
-                return (
-                  <div key={tool.name} className="flex items-start gap-4 px-5 py-4 hover:bg-gray-50/50 transition-colors">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${colorMap[tool.color]}`}>
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <code className="text-sm font-mono font-semibold text-gray-900">{tool.name}</code>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PERMISSION_COLORS[tool.permission]}`}>
-                          {tool.permission}
-                        </span>
-                        {tool.badge && (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
-                            {tool.badge}
-                          </span>
-                        )}
+              <div className="divide-y divide-border-muted">
+                {tools.map(tool => {
+                  const Icon = tool.icon
+                  const colorMap: Record<string, string> = {
+                    blue: 'bg-accent-50 text-accent-700 border border-accent-100',
+                    green: 'bg-success-bg text-success border border-success-border',
+                    amber: 'bg-warning-bg text-warning border border-warning-border',
+                    purple: 'bg-accent-100 text-accent-900 border border-accent-200',
+                    orange: 'bg-warning-bg text-warning border border-warning-border',
+                    red: 'bg-error-bg text-error border border-error-border',
+                    teal: 'bg-accent-50 text-accent-600 border border-accent-100',
+                  }
+                  return (
+                    <div key={tool.name} className="flex items-start gap-4 px-6 py-5 hover:bg-surface-container-low/40 transition-colors">
+                      <div className={`w-9 h-9 rounded flex items-center justify-center flex-shrink-0 ${colorMap[tool.color]}`}>
+                        <Icon className="w-4.5 h-4.5" />
                       </div>
-                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">{tool.description}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <code className="text-sm font-mono font-bold text-on-surface">{tool.name}</code>
+                          <span className={`text-[10px] px-2.5 py-0.5 rounded font-bold tracking-wider font-mono uppercase ${PERMISSION_COLORS[tool.permission]}`}>
+                            {tool.permission}
+                          </span>
+                          {tool.badge && (
+                            <span className="text-[10px] px-2.5 py-0.5 rounded bg-accent-100 text-accent-700 border border-accent-200 font-bold tracking-wider font-mono uppercase">
+                              {tool.badge}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-text-secondary mt-1.5 leading-relaxed">{tool.description}</p>
+                      </div>
                     </div>
-                  </div>
-                )
-              })}
+                  )
+                })}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       {/* Auth Token */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="w-4 h-4 text-gray-500" />
-          <h2 className="text-sm font-semibold text-gray-800">Your JWT Token</h2>
+      <div className="card p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <Shield className="w-5 h-5 text-on-surface-variant" />
+          <h2 className="text-base font-bold text-on-surface">Your Authentication JWT Token</h2>
         </div>
-        <p className="text-xs text-gray-500 mb-3">
-          Include this in the Authorization header. CRUD permissions are automatically enforced per your access level.
+        <p className="text-xs text-text-muted">
+          Include this token in your MCP headers. Database CRUD permissions and row-level security constraints will be automatically enforced matching your active workspace role.
         </p>
         <div className="relative">
-          <div className="bg-gray-900 rounded-lg px-4 py-3 font-mono text-xs text-green-400 break-all pr-12 max-h-24 overflow-hidden">
+          <div className="bg-[#1A1916] border border-outline/30 rounded-lg px-4 py-4.5 font-mono text-xs text-[#efeeea] break-all pr-14 max-h-36 overflow-y-auto leading-relaxed shadow-inner select-all">
             {token || 'Not logged in'}
           </div>
           <button
             onClick={() => copy(token || '', 'token')}
-            className="absolute right-2 top-2 text-gray-400 hover:text-gray-200 p-1.5 bg-gray-800 rounded"
+            className="absolute right-3 top-3 text-text-muted hover:text-white p-2 bg-surface-container-highest/10 hover:bg-surface-container-highest/20 rounded border border-outline/20 transition-all"
+            title="Copy Auth Token"
           >
-            {copied === 'token' ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+            {copied === 'token' ? <Check className="w-4 h-4 text-success" /> : <Copy className="w-4 h-4" />}
           </button>
         </div>
       </div>
 
       {/* Client Configs */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {[
-          { key: 'claude', label: 'Claude Desktop', config: claudeConfig, path: 'claude_desktop_config.json' },
-          { key: 'cursor', label: 'Cursor / VS Code / Gemini CLI', config: cursorConfig, path: '.cursor/mcp.json' },
+          { key: 'claude', label: 'Claude Desktop Config', config: claudeConfig, path: 'claude_desktop_config.json' },
+          { key: 'cursor', label: 'Cursor / VS Code Config', config: cursorConfig, path: '.cursor/mcp.json' },
         ].map(({ key, label, config, path }) => (
-          <div key={key} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-gray-800">{label}</h2>
+          <div key={key} className="card p-6 flex flex-col justify-between space-y-4">
+            <div className="flex items-start justify-between">
+              <div>
+                <h2 className="text-sm font-bold text-on-surface">{label}</h2>
+                <p className="text-[11px] text-text-muted mt-1">
+                  Add to <code className="bg-surface-container-low px-1.5 py-0.5 rounded border border-border-default font-mono text-[10px]">{path}</code>
+                </p>
+              </div>
               <button
                 onClick={() => copy(config, key)}
-                className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border-default rounded hover:bg-surface-container-low text-on-surface font-semibold bg-white transition-colors flex-shrink-0"
               >
-                {copied === key ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3" />}
-                {copied === key ? 'Copied!' : 'Copy'}
+                {copied === key ? <Check className="w-3.5 h-3.5 text-success" /> : <Copy className="w-3.5 h-3.5 text-text-muted" />}
+                {copied === key ? 'Copied!' : 'Copy JSON'}
               </button>
             </div>
-            <p className="text-xs text-gray-400 mb-2">Add to <code className="bg-gray-100 px-1 py-0.5 rounded">{path}</code></p>
-            <pre className="bg-gray-900 text-green-400 text-xs rounded-lg p-3 overflow-x-auto font-mono leading-relaxed max-h-48 overflow-y-auto">
+            <pre className="bg-[#1A1916] border border-outline/30 text-[#efeeea] text-xs rounded-lg p-4 overflow-x-auto font-mono leading-relaxed max-h-56 overflow-y-auto shadow-inner">
               {config}
             </pre>
           </div>
@@ -299,15 +321,15 @@ export function MCPPage() {
       </div>
 
       {/* Supported DBs */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">14 Supported Database Types</h3>
+      <div className="bg-surface-container-low border border-border-default rounded-card p-6">
+        <h3 className="text-sm font-bold text-on-surface mb-3.5 uppercase tracking-wider font-mono">14 Supported Database Types</h3>
         <div className="flex flex-wrap gap-2">
           {[
             'PostgreSQL', 'MySQL', 'SQLite', 'SQL Server', 'Oracle',
             'Snowflake', 'Redshift', 'BigQuery', 'MongoDB',
             'Elasticsearch', 'Redis', 'Salesforce', 'REST API', 'Airtable'
           ].map(db => (
-            <span key={db} className="text-xs bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-gray-700">
+            <span key={db} className="text-xs bg-white border border-border-default rounded px-3 py-2 text-on-surface font-medium hover:bg-surface-container-low transition-colors shadow-sm">
               {db}
             </span>
           ))}

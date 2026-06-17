@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
@@ -232,7 +233,46 @@ async def _execute_on_connector_raw(connector: Connector, query: str) -> QueryRe
     return res
 
 
+# ── Dangerous SQL patterns blocked before execution ──────────────────────────
+# These bypass our table-level permission checks because sqlglot cannot extract
+# table names from dynamic SQL inside EXEC/sp_executesql string parameters.
+_BLOCKED_SQL_PATTERNS = re.compile(
+    r'\b('
+    r'EXEC(?:UTE)?\b'
+    r'|sp_executesql'
+    r'|xp_cmdshell'
+    r'|xp_regread'
+    r'|xp_fileexist'
+    r'|OPENROWSET'
+    r'|OPENQUERY'
+    r'|OPENDATASOURCE'
+    r'|DBCC\b'
+    r'|BULK\s+INSERT'
+    r'|RECONFIGURE'
+    r')'
+    , re.IGNORECASE
+)
+
+# System catalog views that expose metadata and should be blocked for non-admin users
+_BLOCKED_SYSTEM_TABLES = re.compile(
+    r'\b('
+    r'sys\.'
+    r'|INFORMATION_SCHEMA\.'
+    r'|msdb\.'
+    r'|master\.sys\.'
+    r'|tempdb\.sys\.'
+    r')'
+    , re.IGNORECASE
+)
+
+
 def _validate_query(query: str, dialect: str) -> Optional[str]:
+    """Validate query syntax and block dangerous patterns."""
+    # Block dangerous commands that bypass table permission checks
+    if _BLOCKED_SQL_PATTERNS.search(query):
+        return "Blocked: EXEC, sp_executesql, and dynamic SQL commands are not permitted."
+    if _BLOCKED_SYSTEM_TABLES.search(query):
+        return "Blocked: Direct access to system catalog views (sys.*, INFORMATION_SCHEMA.*) is not permitted."
     return validate_sql(query, dialect=dialect)
 
 
@@ -381,8 +421,21 @@ async def tool_get_database_schema(
                 filtered_tables.append(t)
         tables = filtered_tables
 
+    # Filter tables user is not authorized to read
+    from app.core.deps import check_table_permission
+    allowed_tables = []
+    cache = {}
+    for t in tables:
+        t_schema = t.get("schema")
+        t_name = t.get("name")
+        full_name = f"{t_schema}.{t_name}" if t_schema else t_name
+        if await check_table_permission(db_id, full_name, "read", ctx.user, ctx.db, _cache=cache):
+            allowed_tables.append(t)
+    tables = allowed_tables
+
     # Overlay atlas tribal knowledge on top of live schema
     tables = _overlay_atlas_knowledge(tables, str(db_id))
+
 
     return build_rich_schema_prompt(tables=tables, connector_type=str(connector.type))
 
@@ -419,7 +472,20 @@ async def tool_get_global_schema_awareness(ctx: ToolContext) -> str:
             tables = (c.schema_cache or {}).get("tables", [])
             source_label = "schema cache"
 
+        # Filter tables user is not authorized to read
+        from app.core.deps import check_table_permission
+        allowed_tables = []
+        cache = {}
+        for t in tables:
+            t_schema = t.get("schema")
+            t_name = t.get("name")
+            full_name = f"{t_schema}.{t_name}" if t_schema else t_name
+            if await check_table_permission(c.id, full_name, "read", ctx.user, ctx.db, _cache=cache):
+                allowed_tables.append(t)
+        tables = allowed_tables
+
         schemas: dict = {}
+
         for t in tables:
             sch = t.get("schema") or "default"
             entry = t["name"]
@@ -447,12 +513,77 @@ async def tool_get_global_schema_awareness(ctx: ToolContext) -> str:
     return "\n".join(output) if found else "No accessible databases."
 
 
+async def _check_query_table_permissions(
+    connector_id: str,
+    query: str,
+    operation: str,
+    user: User,
+    db: AsyncSession,
+    dialect: str,
+) -> Optional[str]:
+    """
+    Checks table permissions for SQL or NoSQL query.
+    Returns None if allowed, or an error message string if blocked.
+    """
+    from app.core.deps import check_table_permission
+    from app.models import TablePermission
+
+    # Check if table permissions exist for this connector first to avoid unnecessary parsing
+    exist_stmt = select(TablePermission.id).where(TablePermission.connector_id == connector_id).limit(1)
+    exist_res = await db.execute(exist_stmt)
+    if not exist_res.scalar_one_or_none():
+        return None
+
+    # If it is a NoSQL query (starts with '{'):
+    if query.strip().startswith("{"):
+        try:
+            q_obj = json.loads(query)
+            if isinstance(q_obj, dict):
+                tbl = q_obj.get("collection") or q_obj.get("index") or q_obj.get("object") or q_obj.get("table")
+                if tbl:
+                    allowed = await check_table_permission(connector_id, tbl, operation, user, db)
+                    if not allowed:
+                        return f"Error: Permission denied -- no '{operation.upper()}' access on table/collection '{tbl}'."
+        except Exception:
+            return "Error: Permission denied -- failed to parse NoSQL query payload."
+    else:
+        # SQL query
+        import sqlglot
+        from sqlglot import exp
+        try:
+            parsed = sqlglot.parse_one(query, read=dialect)
+            if not parsed:
+                return "Error: Permission denied -- empty query."
+            
+            tables = []
+            for t in parsed.find_all(exp.Table):
+                schema = t.db
+                name = t.name
+                if schema:
+                    tables.append(f"{schema}.{name}")
+                else:
+                    tables.append(name)
+            
+            if not tables:
+                return None
+
+            for tbl in tables:
+                allowed = await check_table_permission(connector_id, tbl, operation, user, db)
+                if not allowed:
+                    return f"Error: Permission denied -- no '{operation.upper()}' access on table '{tbl}'."
+        except Exception as e:
+            return f"Error: Permission denied -- query parsing failed: {str(e)}."
+
+    return None
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Tool: Execute Query (READ + WRITE)
 # ─────────────────────────────────────────────────────────────────────────────
 
 async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
     connector = await _get_active_connector(ctx, db_id)
+
     if not connector:
         return f"Error: Database '{db_id}' not found."
 
@@ -465,6 +596,18 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
     op = classify_operation(query)
     if not await check_connector_permission(db_id, op, ctx.user, ctx.db):
         return f"Error: Permission denied -- no '{op.upper()}' access on '{connector.name}'."
+
+    table_error = await _check_query_table_permissions(
+        connector_id=db_id,
+        query=query,
+        operation=op,
+        user=ctx.user,
+        db=ctx.db,
+        dialect=dialect
+    )
+    if table_error:
+        return table_error
+
 
     rls_policies = await _get_rls_policies(ctx, db_id)
     if rls_policies:
@@ -492,6 +635,25 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
                     continue
                 applied_tables.add(full_name.lower())
                 query = apply_rls(query, rls_policies, full_name, user_ctx, dialect=dialect)
+
+    # F-08: Apply Manager-Scoped Row-Level Security
+    if op == "read" and not query.strip().startswith("{"):
+        from app.core.query_runner import apply_rls_to_query
+        import sqlglot
+        from sqlglot import exp
+        try:
+            parsed = sqlglot.parse_one(query, read=dialect)
+            if parsed:
+                applied_filters = set()
+                for t in parsed.find_all(exp.Table):
+                    schema = t.db
+                    name = t.name
+                    full_name = f"{schema}.{name}" if schema else name
+                    if full_name.lower() not in applied_filters:
+                        applied_filters.add(full_name.lower())
+                        query = await apply_rls_to_query(query, db_id, full_name, ctx.user, ctx.db, dialect=dialect)
+        except Exception as e:
+            logger.error("Failed to apply manager-scoped RLS to query: %s", e)
 
     if op == "read":
         cached = await _cache.get(db_id, query)
@@ -542,6 +704,11 @@ async def tool_create_record(
         return f"Error: Database '{db_id}' not found."
     if not await check_connector_permission(db_id, "create", ctx.user, ctx.db):
         return f"Error: Permission denied -- no CREATE access on '{connector.name}'."
+
+    from app.core.deps import check_table_permission
+    if not await check_table_permission(db_id, table_or_collection, "create", ctx.user, ctx.db):
+        return f"Error: Permission denied -- no 'CREATE' access on table/collection '{table_or_collection}'."
+
 
     db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
 
@@ -600,6 +767,11 @@ async def tool_update_record(
     if not await check_connector_permission(db_id, "update", ctx.user, ctx.db):
         return f"Error: Permission denied -- no UPDATE access on '{connector.name}'."
 
+    from app.core.deps import check_table_permission
+    if not await check_table_permission(db_id, table_or_collection, "update", ctx.user, ctx.db):
+        return f"Error: Permission denied -- no 'UPDATE' access on table/collection '{table_or_collection}'."
+
+
     db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
 
     try:
@@ -653,6 +825,11 @@ async def tool_delete_record(
         return f"Error: Database '{db_id}' not found."
     if not await check_connector_permission(db_id, "delete", ctx.user, ctx.db):
         return f"Error: Permission denied -- no DELETE access on '{connector.name}'."
+
+    from app.core.deps import check_table_permission
+    if not await check_table_permission(db_id, table_or_collection, "delete", ctx.user, ctx.db):
+        return f"Error: Permission denied -- no 'DELETE' access on table/collection '{table_or_collection}'."
+
 
     db_type = (connector.type.value if hasattr(connector.type, "value") else str(connector.type)).split(".")[-1].lower()
 

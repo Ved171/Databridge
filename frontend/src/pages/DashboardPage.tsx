@@ -1,35 +1,86 @@
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Database, MessageSquare, Shield, Zap, Clock, CheckCircle, AlertTriangle, ArrowRight, Server, Cloud, Globe, Search, Lock, HardDrive } from 'lucide-react'
+import {
+  Database, Shield, Zap, Radio, AlertTriangle, ArrowRight,
+  Server, Cloud, Globe, Search, HardDrive, ShieldCheck,
+  Plug, Layers,
+} from 'lucide-react'
 import { Link } from 'react-router-dom'
 import api from '../lib/api'
 import { useAuthStore } from '../store/auth'
 
 const DB_TYPE_ICONS: Record<string, React.ReactNode> = {
-  postgres: <Database className="w-5 h-5 text-blue-500" />,
+  postgres: <Database className="w-5 h-5 text-accent-500" />,
   mysql: <Database className="w-5 h-5 text-orange-500" />,
   mongodb: <Database className="w-5 h-5 text-green-500" />,
   snowflake: <Cloud className="w-5 h-5 text-sky-500" />,
   elasticsearch: <Search className="w-5 h-5 text-yellow-500" />,
   redis: <Zap className="w-5 h-5 text-red-500" />,
-  sqlite: <HardDrive className="w-5 h-5 text-gray-500" />,
-  mssql: <Server className="w-5 h-5 text-blue-600" />,
+  sqlite: <HardDrive className="w-5 h-5 text-text-muted" />,
+  mssql: <Server className="w-5 h-5 text-accent-600" />,
   oracle: <Database className="w-5 h-5 text-red-600" />,
-  salesforce: <Cloud className="w-5 h-5 text-blue-400" />,
-  rest_api: <Globe className="w-5 h-5 text-indigo-500" />,
-  default: <Database className="w-5 h-5 text-gray-400" />,
+  salesforce: <Cloud className="w-5 h-5 text-sky-500" />,
+  rest_api: <Globe className="w-5 h-5 text-accent-500" />,
+  default: <Database className="w-5 h-5 text-text-muted" />,
+}
+
+function MiniBarChart({ values }: { values: number[] }) {
+  const max = Math.max(...values, 1)
+  return (
+    <div className="flex items-end gap-1 h-8">
+      {values.map((v, i) => (
+        <div
+          key={i}
+          className="flex-1 bg-accent-500/70 rounded-sm min-h-[4px]"
+          style={{ height: `${Math.max((v / max) * 100, 8)}%` }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function HealthChart({ healthy, warning, offline }: { healthy: number; warning: number; offline: number }) {
+  const total = healthy + warning + offline
+  const max = Math.max(healthy, warning, offline, 1)
+  const items = [
+    { label: 'Ready', count: healthy, color: 'bg-accent-500' },
+    { label: 'Needs Schema', count: warning, color: 'bg-accent-500/40' },
+    { label: 'Inactive', count: offline, color: 'bg-outline-variant' },
+  ]
+  return (
+    <div className="flex items-end gap-6 h-44 pt-4">
+      {items.map(item => (
+        <div key={item.label} className="flex-1 flex flex-col items-center gap-1.5">
+          <span className="text-[10px] font-mono text-text-muted">{item.count}</span>
+          <div className="w-full flex justify-center h-32 items-end">
+            <div
+              className={`w-12 rounded-t-sm ${item.color}`}
+              style={{ height: `${Math.max((item.count / max) * 100, item.count > 0 ? 8 : 0)}%`, minHeight: item.count > 0 ? 16 : 0 }}
+            />
+          </div>
+          <span className="text-[10px] font-mono text-text-muted text-center">{item.label}</span>
+        </div>
+      ))}
+      {total === 0 && (
+        <div className="flex-1 flex items-center justify-center text-sm text-text-muted">
+          No connectors to analyse
+        </div>
+      )}
+    </div>
+  )
 }
 
 export function DashboardPage() {
   const user = useAuthStore(s => s.user)
 
+  const { data: dashboardSummary } = useQuery({
+    queryKey: ['dashboard-summary'],
+    queryFn: () => api.get('/api/dashboard/summary').then(r => r.data),
+  })
+
   const { data: connectors = [] } = useQuery({
     queryKey: ['connectors'],
     queryFn: () => api.get('/api/connectors/').then(r => r.data),
-  })
-
-  const { data: logs = [] } = useQuery({
-    queryKey: ['query-logs'],
-    queryFn: () => api.get('/api/query/logs?limit=10').then(r => r.data),
   })
 
   const { data: myPerms = [] } = useQuery({
@@ -37,182 +88,299 @@ export function DashboardPage() {
     queryFn: () => api.get('/api/permissions/my-permissions').then(r => r.data),
   })
 
-  const successLogs = logs.filter((l: any) => l.status === 'success')
-  const errorLogs = logs.filter((l: any) => l.status === 'error')
-  const cachedConnectors = connectors.filter((c: any) => c.schema_cached_at)
-  const roleBadge = user?.role === 'super_admin' ? 'Super Admin' : user?.role === 'admin' ? 'Admin' : user?.role === 'workspace_admin' ? 'Workspace Admin' : 'Member'
+  const visibleConnectors = dashboardSummary?.access?.accessible_connectors ?? connectors
+  const mcpToolCount = dashboardSummary?.mcp?.tool_count ?? 0
+  const mcpResourceCount = dashboardSummary?.mcp?.resource_count ?? 0
+
+  const stats = useMemo(() => {
+    const activeConnectors = connectors.filter((c: any) => c.is_active)
+    const cachedConnectors = connectors.filter((c: any) => c.schema_cached_at)
+    const readyConnectors = connectors.filter((c: any) => c.is_active && c.schema_cached_at)
+    const needsSchema = connectors.filter((c: any) => c.is_active && !c.schema_cached_at)
+    const inactive = connectors.filter((c: any) => !c.is_active)
+    const summaryConnectors = dashboardSummary?.connectors
+    const summaryAccess = dashboardSummary?.access
+
+    const activeConnectorCount = summaryConnectors?.active ?? activeConnectors.length
+    const cachedConnectorCount = summaryConnectors?.schema_cached ?? cachedConnectors.length
+    const readyConnectorCount = summaryConnectors?.ready ?? readyConnectors.length
+    const needsSchemaCount = summaryConnectors?.needs_schema ?? needsSchema.length
+    const inactiveConnectorCount = summaryConnectors?.inactive ?? inactive.length
+
+    const schemaReadiness = summaryConnectors?.schema_readiness_pct ?? (connectors.length > 0
+      ? (cachedConnectors.length / connectors.length) * 100
+      : null)
+
+    const permCoverage = summaryAccess?.coverage_pct ?? (connectors.length > 0
+      ? Math.round((myPerms.length / connectors.length) * 100)
+      : null)
+
+    const healthSource = visibleConnectors.length > 0 ? visibleConnectors : connectors
+    const connectorHealthBars = healthSource.slice(0, 8).map((c: any) => {
+      if (c.is_active && c.schema_cached_at) return 3
+      if (c.is_active) return 2
+      return 1
+    })
+
+    const typeCounts: Record<string, number> = {}
+    connectors.forEach((c: any) => {
+      typeCounts[c.type] = (typeCounts[c.type] || 0) + 1
+    })
+    const typeDistribution = summaryConnectors?.type_distribution ?? (
+      Object.entries(typeCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([type, count]) => ({
+          type,
+          count,
+          pct: connectors.length > 0 ? Math.round((count / connectors.length) * 100) : 0,
+        }))
+    )
+
+    const readPerms = summaryAccess?.read ?? myPerms.filter((p: any) => p.can_read).length
+    const writePerms = summaryAccess?.write ?? myPerms.filter((p: any) => p.can_create || p.can_update || p.can_delete).length
+
+    return {
+      activeConnectorCount,
+      cachedConnectorCount,
+      readyConnectorCount,
+      needsSchemaCount,
+      inactiveConnectorCount,
+      schemaReadiness,
+      permCoverage,
+      connectorHealthBars,
+      typeDistribution,
+      readPerms,
+      writePerms,
+    }
+  }, [connectors, myPerms, dashboardSummary, visibleConnectors])
+
+  const roleBadge = user?.is_superadmin || user?.role === 'superadmin' || user?.role === 'super_admin'
+    ? 'Super Admin'
+    : user?.role === 'admin'
+      ? 'Admin'
+      : user?.role === 'workspace_admin'
+        ? 'Workspace Admin'
+        : 'Member'
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      {/* Welcome */}
-      <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 rounded-2xl p-6 text-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="relative">
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-xl font-semibold">Welcome back, {user?.name || 'User'}</h1>
-            <span className="text-xs bg-white/20 rounded-full px-2.5 py-0.5 font-medium">{roleBadge}</span>
+    <div className="px-4 md:px-8 py-6 md:py-8 max-w-content mx-auto space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="headline-xl">System Overview</h1>
+        <p className="text-sm text-text-muted mt-1">
+          Welcome back, {user?.name || 'User'} - {roleBadge} - {stats.activeConnectorCount} active connector{stats.activeConnectorCount !== 1 ? 's' : ''} - Query via MCP
+        </p>
+      </div>
+
+      {/* 3 summary cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Card 1 — Schema Readiness */}
+        <div className="card p-4 hover:border-accent-500/30 transition-colors">
+          <p className="label-sm text-text-muted">Schema Readiness</p>
+          <div className="flex items-end justify-between mt-2">
+            <p className="font-headline text-3xl font-extrabold text-on-surface">
+              {stats.schemaReadiness !== null ? `${Math.round(stats.schemaReadiness)}%` : '—'}
+            </p>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium border ${stats.cachedConnectorCount === stats.activeConnectorCount && stats.activeConnectorCount > 0
+                ? 'bg-success-bg text-success border-success-border'
+                : 'bg-warning-bg text-warning border-warning-border'
+              }`}>
+              {stats.cachedConnectorCount}/{stats.activeConnectorCount} cached
+            </span>
           </div>
-          <p className="text-indigo-200 text-sm">
-            DataBridge - AI-powered multi-database query platform
+          <div className="progress-track mt-3">
+            <div className="progress-fill" style={{ width: `${stats.schemaReadiness ?? 0}%` }} />
+          </div>
+          <p className="text-xs text-text-muted mt-2">
+            Schemas power MCP discovery tools
           </p>
-          <div className="flex items-center gap-3 mt-4 flex-wrap">
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 text-sm">
-              <Database className="w-4 h-4" />
-              <span className="font-medium">{connectors.length}</span>
-              <span className="text-indigo-200 text-xs">databases</span>
-            </div>
-            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 text-sm">
-              <CheckCircle className="w-4 h-4" />
-              <span className="font-medium">{cachedConnectors.length}</span>
-              <span className="text-indigo-200 text-xs">schemas cached</span>
-            </div>
-            {/* <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-lg px-3 py-2 text-sm">
-              <MessageSquare className="w-4 h-4" />
-              <span className="font-medium">{logs.length}</span>
-              <span className="text-indigo-200 text-xs">recent queries</span>
-            </div> */}
+        </div>
+
+        {/* Card 2 — Active Connectors */}
+        <div className="card p-4 hover:border-accent-500/30 transition-colors">
+          <p className="label-sm text-text-muted">Active Connectors</p>
+          <div className="flex items-end justify-between mt-2">
+            <p className="font-headline text-3xl font-extrabold text-on-surface">
+              {stats.activeConnectorCount}
+            </p>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-mono font-medium border ${stats.readyConnectorCount === stats.activeConnectorCount && stats.activeConnectorCount > 0
+                ? 'bg-success-bg text-success border-success-border'
+                : 'bg-warning-bg text-warning border-warning-border'
+              }`}>
+              <Radio className="w-3 h-3" />
+              {stats.readyConnectorCount} MCP-ready
+            </span>
           </div>
+          <div className="mt-3">
+            <MiniBarChart values={stats.connectorHealthBars.length > 0 ? stats.connectorHealthBars : [0]} />
+          </div>
+          <p className="text-xs text-text-muted mt-2">Per-connector health status</p>
+        </div>
+
+        {/* Card 3 — MCP Gateway (highlighted) */}
+        <div className="bg-accent-500 rounded-card p-4 text-white relative overflow-hidden hover:opacity-95 transition-opacity">
+          <div className="flex items-start justify-between">
+            <p className="label-sm text-white/70">MCP Gateway</p>
+            <Plug className="w-4 h-4 text-white/60" />
+          </div>
+          <p className="font-headline text-3xl font-extrabold mt-2">{mcpToolCount}</p>
+          <p className="text-xs text-white/60 font-mono uppercase tracking-wider mt-0.5">
+            Tools Available{mcpResourceCount > 0 ? ` - ${mcpResourceCount} resources` : ''}
+          </p>
+          <p className="text-xs text-white/70 mt-2 truncate">
+            {stats.permCoverage !== null ? `${stats.permCoverage}% connector access` : 'Secure data access'}
+            {stats.readPerms > 0 && ` - ${stats.readPerms} read / ${stats.writePerms} write`}
+          </p>
+          <Link
+            to="/mcp"
+            className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-white bg-white/15 hover:bg-white/25 px-3 py-1.5 rounded transition-colors"
+          >
+            Set up MCP <ArrowRight className="w-3 h-3" />
+          </Link>
         </div>
       </div>
 
-      {/* Quick Actions */}
+      {/* Analytics row */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Connector health */}
+        <div className="lg:col-span-8 card p-5 hover:border-accent-500/30 transition-colors">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-semibold text-on-surface">Connector Health</h2>
+            <div className="flex items-center gap-4 text-xs text-text-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-accent-500" /> Ready
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-accent-500/40" /> Needs Schema
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-outline-variant" /> Inactive
+              </span>
+            </div>
+          </div>
+          <HealthChart
+            healthy={stats.readyConnectorCount}
+            warning={stats.needsSchemaCount}
+            offline={stats.inactiveConnectorCount}
+          />
+        </div>
+
+        {/* Connector type distribution */}
+        <div className="lg:col-span-4 card p-5 hover:border-accent-500/30 transition-colors flex flex-col">
+          <h2 className="text-sm font-semibold text-on-surface mb-5">Connector Types</h2>
+          {stats.typeDistribution.length === 0 ? (
+            <p className="text-sm text-text-muted flex-1">No connectors configured.</p>
+          ) : (
+            <div className="space-y-4 flex-1">
+              {stats.typeDistribution.slice(0, 5).map(({ type, pct }: { type: string; pct: number }, i: number) => (
+                <div key={type}>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-sm text-on-surface capitalize">{type.replace('_', ' ')}</span>
+                    <span className="text-sm font-medium text-on-surface">{pct}%</span>
+                  </div>
+                  <div className="progress-track h-2">
+                    <div
+                      className="h-full rounded-full bg-accent-500"
+                      style={{ width: `${pct}%`, opacity: 1 - i * 0.15 }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {stats.activeConnectorCount > 0 && (
+            <div className="mt-5 p-3 bg-surface-container-low rounded border border-border-default">
+              <p className="text-xs text-text-muted leading-relaxed">
+                {stats.readyConnectorCount} of {stats.activeConnectorCount} active connector{stats.activeConnectorCount !== 1 ? 's are' : ' is'} ready for MCP queries.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        {/* <Link to="/query" className="group flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all">
-          <div className="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-            <MessageSquare className="w-5 h-5 text-indigo-600" />
+        <Link to="/mcp" className="card p-4 flex items-center gap-3 hover:border-accent-500/30 transition-colors group border-accent-500/20">
+          <div className="w-10 h-10 bg-accent-50 rounded flex items-center justify-center group-hover:bg-accent-100 transition-colors">
+            <Zap className="w-5 h-5 text-accent-500" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">Ask a Question</p>
-            <p className="text-xs text-gray-400">Natural language query</p>
+            <p className="text-sm font-medium text-on-surface">MCP Integration</p>
+            <p className="text-xs text-text-muted">{mcpToolCount} tools - Connect your AI client</p>
           </div>
-          <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors" />
-        </Link> */}
-        <Link to="/connectors" className="group flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all">
-          <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center group-hover:bg-green-100 transition-colors">
-            <Database className="w-5 h-5 text-green-600" />
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">Manage Connectors</p>
-            <p className="text-xs text-gray-400">{connectors.length} connected</p>
-          </div>
-          <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-green-500 transition-colors" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent-500 transition-colors" />
         </Link>
-        <Link to="/mcp" className="group flex items-center gap-3 bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all">
-          <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center group-hover:bg-purple-100 transition-colors">
-            <Zap className="w-5 h-5 text-purple-600" />
+        <Link to="/connectors" className="card p-4 flex items-center gap-3 hover:border-accent-500/30 transition-colors group">
+          <div className="w-10 h-10 bg-accent-50 rounded flex items-center justify-center group-hover:bg-accent-100 transition-colors">
+            <Database className="w-5 h-5 text-accent-500" />
           </div>
           <div className="flex-1">
-            <p className="text-sm font-medium text-gray-900">MCP Integration</p>
-            <p className="text-xs text-gray-400">11 tools available</p>
+            <p className="text-sm font-medium text-on-surface">Manage Connectors</p>
+            <p className="text-xs text-text-muted">{stats.activeConnectorCount} active</p>
           </div>
-          <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-purple-500 transition-colors" />
+          <ArrowRight className="w-4 h-4 text-text-muted group-hover:text-accent-500 transition-colors" />
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        {/* Connected databases */}
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-800">Connected Databases</h2>
-            <Link to="/connectors" className="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
-              View all &rarr;
+      {/* Connected databases */}
+      <div className="card overflow-hidden">
+        <div className="px-5 py-4 border-b border-border-default flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-on-surface">Connected Databases</h2>
+          <Link to="/connectors" className="text-xs text-accent-500 hover:opacity-80 font-medium transition-opacity">
+            View all →
+          </Link>
+        </div>
+        {visibleConnectors.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <Database className="w-8 h-8 text-text-muted mx-auto mb-2" />
+            <p className="text-sm text-text-secondary">No readable databases available</p>
+            <Link to="/connectors" className="text-xs text-accent-500 hover:opacity-80 mt-1 inline-block">
+              Manage connector access -&gt;
             </Link>
           </div>
-          {connectors.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <Database className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No databases connected yet</p>
-              <Link to="/connectors" className="text-xs text-indigo-600 hover:underline mt-1 inline-block">
-                Add your first connector &rarr;
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {connectors.slice(0, 6).map((c: any) => (
-                <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-gray-50/50 transition-colors">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-md bg-gray-50 border border-gray-100">{DB_TYPE_ICONS[c.type] || DB_TYPE_ICONS.default}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">{c.name}</p>
-                    <p className="text-xs text-gray-400">{c.type}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {c.schema_cached_at ? (
-                      <span className="text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full">Cached</span>
-                    ) : (
-                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                        <AlertTriangle className="w-2.5 h-2.5" /> No schema
-                      </span>
-                    )}
-                    <span className={`w-2 h-2 rounded-full ${c.is_active ? 'bg-green-400' : 'bg-gray-300'}`} />
-                  </div>
+        ) : (
+          <div className="divide-y divide-border-muted">
+            {visibleConnectors.slice(0, 6).map((c: any) => (
+              <div key={c.id} className="flex items-center gap-3 px-5 py-3 hover:bg-surface-container-low transition-colors">
+                <span className="flex items-center justify-center w-8 h-8 rounded bg-surface-container-low border border-border-default">
+                  {DB_TYPE_ICONS[c.type] || DB_TYPE_ICONS.default}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-on-surface truncate">{c.name}</p>
+                  <p className="text-xs text-text-muted">{c.type}</p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Recent queries */}
-        {/* <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-gray-800">Recent Queries</h2>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1 text-green-600">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-400" /> {successLogs.length} ok
-              </span>
-              <span className="flex items-center gap-1 text-red-500">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400" /> {errorLogs.length} errors
-              </span>
-            </div>
+                <div className="flex items-center gap-1.5">
+                  {c.schema_cached_at ? (
+                    <span className="badge-success">Cached</span>
+                  ) : (
+                    <span className="badge-warning flex items-center gap-1">
+                      <AlertTriangle className="w-2.5 h-2.5" /> No schema
+                    </span>
+                  )}
+                  <span className={`w-2 h-2 rounded-full ${c.is_active ? 'bg-success' : 'bg-text-muted'}`} />
+                </div>
+              </div>
+            ))}
           </div>
-          {logs.length === 0 ? (
-            <div className="px-5 py-10 text-center">
-              <MessageSquare className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-              <p className="text-sm text-gray-500">No queries yet</p>
-              <Link to="/query" className="text-xs text-indigo-600 hover:underline mt-1 inline-block">
-                Try asking a question &rarr;
-              </Link>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-50">
-              {logs.slice(0, 6).map((log: any) => (
-                <div key={log.id} className="px-5 py-3 hover:bg-gray-50/50 transition-colors">
-                  <div className="flex items-start gap-2">
-                    <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${log.status === 'success' ? 'bg-green-400' : 'bg-red-400'
-                      }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-700 truncate">{log.natural_language}</p>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-xs text-gray-400 flex items-center gap-1">
-                          <Clock className="w-2.5 h-2.5" />
-                          {log.duration_ms ? `${Math.round(parseFloat(log.duration_ms))}ms` : '-'}
-                        </span>
-                        <span className="text-xs text-gray-300">{new Date(log.executed_at).toLocaleTimeString()}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div> */}
+        )}
       </div>
 
       {/* Access overview */}
-      {myPerms.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
+      {visibleConnectors.length > 0 && (
+        <div className="card p-5">
           <div className="flex items-center gap-2 mb-3">
-            <Shield className="w-4 h-4 text-indigo-600" />
-            <h2 className="text-sm font-semibold text-gray-800">Your Access</h2>
+            <Shield className="w-4 h-4 text-accent-500" />
+            <h2 className="text-sm font-semibold text-on-surface">Your Access</h2>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {myPerms.map((p: any) => (
-              <div key={p.connector_id} className="bg-gray-50 rounded-lg px-3 py-2.5">
-                <p className="text-sm font-medium text-gray-800 truncate">{p.connector_name}</p>
+            {visibleConnectors.map((p: any) => (
+              <div key={p.id || p.connector_id} className="bg-surface-container-low rounded px-3 py-2.5">
+                <p className="text-sm font-medium text-on-surface truncate">{p.name || p.connector_name}</p>
                 <div className="flex items-center gap-1 mt-1 flex-wrap">
-                  {p.can_read && <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">R</span>}
-                  {p.can_create && <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded">C</span>}
-                  {p.can_update && <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded">U</span>}
-                  {p.can_delete && <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">D</span>}
+                  {p.can_read && <span className="text-xs bg-accent-50 text-accent-600 px-1.5 py-0.5 rounded font-mono">R</span>}
+                  {p.can_create && <span className="text-xs bg-success-bg text-success px-1.5 py-0.5 rounded font-mono">C</span>}
+                  {p.can_update && <span className="text-xs bg-warning-bg text-warning px-1.5 py-0.5 rounded font-mono">U</span>}
+                  {p.can_delete && <span className="text-xs bg-error-bg text-error px-1.5 py-0.5 rounded font-mono">D</span>}
                 </div>
               </div>
             ))}
@@ -220,25 +388,25 @@ export function DashboardPage() {
         </div>
       )}
 
-      {/* Architecture */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-          <Zap className="w-4 h-4 text-amber-500" />
-          How DataBridge Processes Queries
+      {/* MCP workflow */}
+      <div className="card p-5">
+        <h3 className="text-sm font-semibold text-on-surface mb-3 flex items-center gap-2">
+          <Plug className="w-4 h-4 text-accent-500" />
+          How Data Access Works via MCP
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           {[
-            { step: '1', title: 'Schema Discovery', desc: 'Semantic type annotations and tribal knowledge enrich the schema context', icon: <Search className="w-5 h-5 text-indigo-500" /> },
-            { step: '2', title: 'Permission Check', desc: 'Only tables/columns the user can access are sent to the AI model', icon: <Shield className="w-5 h-5 text-green-500" /> },
-            { step: '3', title: 'Query Generation', desc: 'AI generates dialect-specific SQL/NoSQL with pre-resolved date terms', icon: <Zap className="w-5 h-5 text-amber-500" /> },
-            { step: '4', title: 'RLS Injection', desc: 'Row-level security filters injected before execution. Results returned.', icon: <Lock className="w-5 h-5 text-red-500" /> },
-          ].map(({ step, title, desc, icon }) => (
-            <div key={step} className="bg-white border border-gray-200 rounded-lg p-3.5">
+            { title: 'Connect MCP Client', desc: 'Link Cursor, Claude Desktop, or any MCP-compatible AI agent to the DataBridge gateway.', icon: <Plug className="w-5 h-5 text-accent-500" /> },
+            { title: 'Schema Discovery', desc: 'AI calls get_relevant_schema to discover only the tables and columns you can access.', icon: <Search className="w-5 h-5 text-accent-500" /> },
+            { title: 'Permission Check', desc: 'Every tool call is scoped to your role, connector permissions, and row-level security rules.', icon: <ShieldCheck className="w-5 h-5 text-success" /> },
+            { title: 'Execute via Tools', desc: 'Queries run through execute_query or execute_federated_query — no in-app chat required.', icon: <Layers className="w-5 h-5 text-warning" /> },
+          ].map(({ title, desc, icon }) => (
+            <div key={title} className="bg-surface-container-low border border-border-default rounded p-3.5">
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="text-base">{icon}</span>
-                <span className="text-xs font-semibold text-gray-700">{title}</span>
+                {icon}
+                <span className="text-xs font-semibold text-on-surface">{title}</span>
               </div>
-              <p className="text-xs text-gray-500 leading-relaxed">{desc}</p>
+              <p className="text-xs text-text-secondary leading-relaxed">{desc}</p>
             </div>
           ))}
         </div>

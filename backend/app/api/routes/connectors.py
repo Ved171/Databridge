@@ -12,16 +12,41 @@ import shutil
 from app.core.config import settings
 
 from app.core.database import get_db
-from app.core.deps import get_current_user, get_current_superadmin, get_current_admin_or_wsadmin
+from app.core.deps import check_connector_permission, get_current_user, get_current_superadmin, get_current_admin_or_wsadmin
 from app.core.security import encrypt_credential, decrypt_credential
 from app.models import User, Connector, ConnectorPermission, ConnectorType
-from app.schemas import ConnectorCreate, ConnectorUpdate, ConnectorOut, ConnectorSchemaOut
+from app.schemas import ConnectorCreate, ConnectorUpdate, ConnectorOut, ConnectorSchemaOut, ConnectorPolicyUpdate
 from app.connectors.registry import get_connector
 from app.services.atlas_builder import get_atlas_builder, transform_schema_to_atlas_tables
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def set_is_open_access(connectors, db: AsyncSession) -> None:
+    from sqlalchemy import func
+    from app.models import ConnectorPermission
+    
+    if not isinstance(connectors, list):
+        conns = [connectors]
+    else:
+        conns = connectors
+        
+    if not conns:
+        return
+        
+    connector_ids = [c.id for c in conns]
+    counts_res = await db.execute(
+        select(ConnectorPermission.connector_id, func.count(ConnectorPermission.id))
+        .where(ConnectorPermission.connector_id.in_(connector_ids))
+        .group_by(ConnectorPermission.connector_id)
+    )
+    counts_dict = {row[0]: row[1] for row in counts_res.all()}
+    
+    for c in conns:
+        c.is_open_access = (c.default_policy == 'allow_all' and counts_dict.get(c.id, 0) == 0)
+
 
 
 async def build_atlas_for_connector(connector: Connector, db: AsyncSession) -> None:
@@ -77,6 +102,7 @@ async def create_connector(
     # Automatically build atlas after connector creation
     await build_atlas_for_connector(connector, db)
     
+    await set_is_open_access(connector, db)
     return connector
 
 
@@ -85,20 +111,20 @@ async def list_connectors(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    if current_user.is_superadmin:
-        result = await db.execute(select(Connector).where(Connector.is_active == True))
-        return result.scalars().all()
+    result = await db.execute(select(Connector).where(Connector.is_active == True))
+    all_connectors = result.scalars().all()
 
-    # Only connectors the user has a permission record for
-    result = await db.execute(
-        select(Connector)
-        .join(ConnectorPermission, ConnectorPermission.connector_id == Connector.id)
-        .where(
-            ConnectorPermission.user_id == current_user.id,
-            Connector.is_active == True,
-        )
-    )
-    return result.scalars().all()
+    if current_user.is_superadmin:
+        connectors = list(all_connectors)
+    else:
+        access_cache = {}
+        connectors = []
+        for c in all_connectors:
+            if await check_connector_permission(c.id, "read", current_user, db, _cache=access_cache):
+                connectors.append(c)
+
+    await set_is_open_access(connectors, db)
+    return connectors
 
 
 @router.get("/{connector_id}", response_model=ConnectorOut)
@@ -111,6 +137,7 @@ async def get_connector_detail(
     conn = result.scalar_one_or_none()
     if not conn:
         raise HTTPException(status_code=404, detail="Connector not found")
+    await set_is_open_access(conn, db)
     return conn
 
 
@@ -152,6 +179,7 @@ async def update_connector(
 
     await db.flush()
     await db.refresh(conn)
+    await set_is_open_access(conn, db)
     return conn
 
 
@@ -178,6 +206,34 @@ async def delete_connector(
     
     await db.delete(conn)
     return {"status": "deleted"}
+
+
+@router.patch("/{id}/policy", response_model=ConnectorOut)
+async def update_connector_policy(
+    id: str,
+    payload: ConnectorPolicyUpdate,
+    db: AsyncSession = Depends(get_db),
+    _: User = Depends(get_current_superadmin)
+):
+    """
+    Update the default policy for a connector.
+    
+    Policy can be:
+    - 'allow_all': All authenticated users can query (backward compatible)
+    - 'deny_all': Only explicitly granted users/roles/depts can query (secure default)
+    """
+    if payload.policy not in ('allow_all', 'deny_all'):
+        raise HTTPException(400, "policy must be 'allow_all' or 'deny_all'.")
+
+    connector = await db.get(Connector, id)
+    if not connector:
+        raise HTTPException(404, "Connector not found.")
+
+    connector.default_policy = payload.policy
+    await db.commit()
+    await db.refresh(connector)
+    await set_is_open_access(connector, db)
+    return connector
 
 
 @router.post("/{connector_id}/test")
@@ -247,15 +303,31 @@ async def get_schema(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    from app.core.deps import check_table_permission
+
     result = await db.execute(select(Connector).where(Connector.id == connector_id))
     conn = result.scalar_one_or_none()
     if not conn:
         raise HTTPException(status_code=404, detail="Connector not found")
 
-    if conn.schema_cache:
-        return ConnectorSchemaOut(connector_id=connector_id, tables=conn.schema_cache.get("tables", []))
+    if not conn.schema_cache:
+        raise HTTPException(status_code=404, detail="Schema not cached yet. Run refresh-schema first.")
 
-    raise HTTPException(status_code=404, detail="Schema not cached yet. Run refresh-schema first.")
+    all_tables = conn.schema_cache.get("tables", [])
+
+    # Superadmins see everything
+    if current_user.is_superadmin:
+        return ConnectorSchemaOut(connector_id=connector_id, tables=all_tables)
+
+    # Filter tables by user's read permission
+    cache: dict = {}
+    allowed_tables = []
+    for t in all_tables:
+        full_name = f"{t['schema']}.{t['name']}" if t.get("schema") else t["name"]
+        if await check_table_permission(connector_id, full_name, "read", current_user, db, _cache=cache):
+            allowed_tables.append(t)
+
+    return ConnectorSchemaOut(connector_id=connector_id, tables=allowed_tables)
 
 
 # ─── SQLite File Upload Helpers ──────────────────────────────────────────────
@@ -348,6 +420,7 @@ async def create_sqlite_connector_via_upload(
     await build_atlas_for_connector(connector, db)
 
     logger.info(f"SQLite connector created via upload: {name} -> {dest_path}")
+    await set_is_open_access(connector, db)
     return connector
 
 
@@ -392,5 +465,6 @@ async def replace_sqlite_file(
     await build_atlas_for_connector(conn, db)
 
     logger.info(f"SQLite file replaced for connector {connector_id}: {dest_path}")
+    await set_is_open_access(conn, db)
     return conn
 

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Plus, Database, Trash2, RefreshCw, CheckCircle, XCircle,
-  ChevronDown, ChevronUp, Eye, EyeOff, Loader2, Zap, Pencil, X, AlertCircle
+  ChevronDown, ChevronUp, Eye, EyeOff, Loader2, Zap, Pencil, X, AlertCircle, AlertTriangle, Clock
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import api from '../lib/api'
@@ -257,10 +257,40 @@ const DB_TYPES: DBTypeDef[] = [
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
-  SQL:   'bg-blue-100 text-blue-700',
-  Cloud: 'bg-purple-100 text-purple-700',
+  SQL:   'bg-accent-100 text-accent-700',
+  Cloud: 'bg-sky-100 text-sky-700',
   NoSQL: 'bg-green-100 text-green-700',
-  SaaS:  'bg-orange-100 text-orange-700',
+  SaaS:  'bg-amber-100 text-amber-700',
+}
+
+const parseUTC = (dateStr: string | null | undefined): Date | null => {
+  if (!dateStr) return null
+  let normalized = dateStr
+  if (!dateStr.endsWith('Z') && !dateStr.includes('+') && !/-\d{2}:\d{2}$/.test(dateStr)) {
+    normalized = dateStr + 'Z'
+  }
+  return new Date(normalized)
+}
+
+const getRemainingTime = (expiresAtStr: string) => {
+  const expiresAt = parseUTC(expiresAtStr)
+  if (!expiresAt) return 'Expired'
+  const now = new Date()
+  const diffMs = expiresAt.getTime() - now.getTime()
+  if (diffMs <= 0) return 'Expired'
+  
+  const diffMins = Math.floor(diffMs / 60000)
+  if (diffMins < 60) return `${diffMins}m remaining`
+  
+  const diffHours = Math.floor(diffMins / 60)
+  if (diffHours < 24) {
+    const mins = diffMins % 60
+    return `${diffHours}h ${mins}m remaining`
+  }
+  
+  const diffDays = Math.floor(diffHours / 24)
+  const hours = diffHours % 24
+  return `${diffDays}d ${hours}h remaining`
 }
 
 export function ConnectorsPage() {
@@ -273,8 +303,10 @@ export function ConnectorsPage() {
   })
   const [testResults, setTestResults] = useState<Record<string, 'ok' | 'fail' | 'loading'>>({})
   const [schemaStatus, setSchemaStatus] = useState<Record<string, 'loading' | 'ok' | 'fail'>>({})
-  const [editTarget, setEditTarget] = useState<{ id: string; name: string; type: string; config: Record<string, string> } | null>(null)
+  const [editTarget, setEditTarget] = useState<{ id: string; name: string; type: string; config: Record<string, string>; default_policy?: string; is_open_access?: boolean } | null>(null)
   const [editLoading, setEditLoading] = useState(false)
+  const [showPolicyDialog, setShowPolicyDialog] = useState(false)
+  const [selectedConnectorForPolicy, setSelectedConnectorForPolicy] = useState<any | null>(null)
   const { user: me } = useAuthStore()
   const myRole = me?.is_superadmin ? 'superadmin' : (me?.role || 'member')
   const isAdmin = myRole === 'admin' || myRole === 'superadmin'
@@ -289,10 +321,28 @@ export function ConnectorsPage() {
   const [editSqliteFile, setEditSqliteFile] = useState<File | null>(null)
   const [isSaving, setIsSaving] = useState(false)
 
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
+  })
+
   const { data: connectors = [], isLoading } = useQuery({
     queryKey: ['connectors'],
     queryFn: () => api.get('/api/connectors/').then(r => r.data),
   })
+
+  const { data: myPerms = [] } = useQuery({
+    queryKey: ['my-permissions'],
+    queryFn: () => api.get('/api/permissions/my-permissions').then(r => r.data),
+  })
+
 
   const createMutation = useMutation({
     mutationFn: (data: any) => {
@@ -321,11 +371,26 @@ export function ConnectorsPage() {
     onError: (e: any) => toast.error(e.response?.data?.detail || 'Delete failed'),
   })
 
+  const updatePolicyMutation = useMutation({
+    mutationFn: ({ id, policy }: { id: string; policy: 'allow_all' | 'deny_all' }) =>
+      api.patch(`/api/connectors/${id}/policy`, { policy }),
+    onSuccess: (res: any) => {
+      qc.invalidateQueries({ queryKey: ['connectors'] })
+      setShowPolicyDialog(false)
+      setSelectedConnectorForPolicy(null)
+      if (editTarget && editTarget.id === res.data.id) {
+        setEditTarget(prev => prev ? { ...prev, default_policy: res.data.default_policy, is_open_access: res.data.is_open_access } : null)
+      }
+      toast.success('Policy updated')
+    },
+    onError: (e: any) => toast.error(e.response?.data?.detail || 'Update failed'),
+  })
+
   const openEditModal = async (c: any) => {
     setEditLoading(true)
     try {
       const res = await api.get(`/api/connectors/${c.id}/config`)
-      setEditTarget({ id: c.id, name: c.name, type: c.type, config: res.data })
+      setEditTarget({ id: c.id, name: c.name, type: c.type, config: res.data, default_policy: c.default_policy, is_open_access: c.is_open_access })
       if (c.type === 'sqlite') {
         const isUploaded = isUploadedPath(res.data.path || '')
         setEditSqliteMode(isUploaded ? 'upload' : 'path')
@@ -420,6 +485,26 @@ export function ConnectorsPage() {
     }
   }
 
+  const handleTogglePolicy = (connector: any) => {
+    setSelectedConnectorForPolicy(connector)
+    // Only show confirmation if switching TO allow_all
+    if (connector.default_policy === 'deny_all') {
+      setShowPolicyDialog(true)
+    } else {
+      // Switch to deny_all without confirmation
+      updatePolicyMutation.mutate({ id: connector.id, policy: 'deny_all' })
+    }
+  }
+
+  const confirmPolicyChange = () => {
+    if (selectedConnectorForPolicy) {
+      updatePolicyMutation.mutate({
+        id: selectedConnectorForPolicy.id,
+        policy: 'allow_all'
+      })
+    }
+  }
+
   const groupedTypes = DB_TYPES.reduce((acc, t) => {
     acc[t.category] = [...(acc[t.category] || []), t]
     return acc
@@ -429,175 +514,190 @@ export function ConnectorsPage() {
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900">Database Connectors</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{connectors.length} connected - 14 supported types</p>
+          <h1 className="text-xl font-semibold text-text-primary">Database Connectors</h1>
+          <p className="text-sm text-text-secondary mt-0.5">{connectors.length} connected - 14 supported types</p>
         </div>
         <button
           onClick={() => setShowForm(f => !f)}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           Add Connector
         </button>
       </div>
 
-      {/* Add Connector Form */}
+      {/* Add Connector Modal */}
       {showForm && (
-        <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">New Connector</h2>
-          <form onSubmit={handleCreate} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={() => { setShowForm(false); resetForm() }} />
+          <div className="relative bg-bg-card rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[85vh] flex flex-col overflow-hidden border border-border-default animate-scale-in">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-muted bg-bg-card flex-shrink-0">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Display Name</label>
-                <input
-                  value={form.name}
-                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-                  placeholder="e.g. Production PostgreSQL"
-                  required
-                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+                <h3 className="text-lg font-semibold text-text-primary">New Connector</h3>
+                <p className="text-xs text-text-secondary mt-0.5">Enter connection and authentication details</p>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Database Type</label>
-                <select
-                  value={form.type}
-                  onChange={e => setForm(f => ({ ...f, type: e.target.value, config: {} }))}
-                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  {Object.entries(groupedTypes).map(([cat, types]) => (
-                    <optgroup key={cat} label={cat}>
-                      {types.map(t => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </optgroup>
-                  ))}
-                </select>
-              </div>
+              <button className="p-1 rounded-md hover:bg-bg-surface" onClick={() => { setShowForm(false); resetForm() }}>
+                <X className="w-5 h-5 text-text-muted" />
+              </button>
             </div>
 
-            {/* Dynamic config fields — grouped by section */}
-            {selectedType && (
-              <div className="bg-gray-50 rounded-lg p-4 space-y-4">
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
-                  Connection Config
-                  <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[selectedType.category]}`}>
-                    {selectedType.category}
-                  </span>
-                </p>
+            <form onSubmit={handleCreate} className="flex-1 flex flex-col overflow-hidden">
+              <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-text-primary mb-1">Display Name</label>
+                    <input
+                      value={form.name}
+                      onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="e.g. Production PostgreSQL"
+                      required
+                      className="input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-text-primary mb-1">Database Type</label>
+                    <select
+                      value={form.type}
+                      onChange={e => setForm(f => ({ ...f, type: e.target.value, config: {} }))}
+                      className="input"
+                    >
+                      {Object.entries(groupedTypes).map(([cat, types]) => (
+                        <optgroup key={cat} label={cat}>
+                          {types.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-                {selectedType.value === 'sqlite' ? (
-                  <SqliteConnectorForm
-                    sqliteMode={sqliteMode}
-                    setSqliteMode={setSqliteMode}
-                    sqliteFile={sqliteFile}
-                    setSqliteFile={setSqliteFile}
-                    sqlitePath={form.config.path || ''}
-                    setSqlitePath={(p) => setForm(f => ({ ...f, config: { ...f.config, path: p } }))}
-                  />
-                ) : (
-                  selectedType.fieldGroups.map((group, gi) => (
-                    <div key={gi}>
-                      {group.title && (
-                        <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2 mt-1">{group.title}</p>
-                      )}
-                      <div className="grid grid-cols-2 gap-3">
-                        {group.fields.map(field => (
-                          <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              {field.label}
-                              {field.required && <span className="text-red-400 ml-0.5">*</span>}
-                            </label>
+                {/* Dynamic config fields — grouped by section */}
+                {selectedType && (
+                  <div className="bg-bg-surface rounded-lg p-4 space-y-4">
+                    <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">
+                      Connection Config
+                      <span className={`ml-2 text-xs px-2 py-0.5 rounded-full font-medium ${CATEGORY_COLORS[selectedType.category]}`}>
+                        {selectedType.category}
+                      </span>
+                    </p>
 
-                            {/* Select dropdown */}
-                            {field.type === 'select' && field.options ? (
-                              <select
-                                value={form.config[field.key] || field.options[0]?.value || ''}
-                                onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
-                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                              >
-                                {field.options.map(opt => (
-                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                ))}
-                              </select>
+                    {selectedType.value === 'sqlite' ? (
+                      <SqliteConnectorForm
+                        sqliteMode={sqliteMode}
+                        setSqliteMode={setSqliteMode}
+                        sqliteFile={sqliteFile}
+                        setSqliteFile={setSqliteFile}
+                        sqlitePath={form.config.path || ''}
+                        setSqlitePath={(p) => setForm(f => ({ ...f, config: { ...f.config, path: p } }))}
+                      />
+                    ) : (
+                      selectedType.fieldGroups.map((group, gi) => (
+                        <div key={gi}>
+                          {group.title && (
+                            <p className="form-section-label mt-1">{group.title}</p>
+                          )}
+                          <div className="grid grid-cols-2 gap-3">
+                            {group.fields.map(field => (
+                              <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
+                                <label className="block text-xs font-medium text-text-primary mb-1">
+                                  {field.label}
+                                  {field.required && <span className="text-red-400 ml-0.5">*</span>}
+                                </label>
 
-                            /* Textarea */
-                            ) : field.type === 'textarea' ? (
-                              <div className="relative">
-                                <textarea
-                                  value={form.config[field.key] || ''}
-                                  onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
-                                  placeholder={field.placeholder || ''}
-                                  required={field.required}
-                                  rows={3}
-                                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-xs"
-                                />
-                                {field.secret && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
-                                    className="absolute right-2 top-2 text-gray-400 hover:text-gray-600"
+                                {/* Select dropdown */}
+                                {field.type === 'select' && field.options ? (
+                                  <select
+                                    value={form.config[field.key] || field.options[0]?.value || ''}
+                                    onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
+                                    className="input"
                                   >
-                                    {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                  </button>
+                                    {field.options.map(opt => (
+                                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                    ))}
+                                  </select>
+
+                                /* Textarea */
+                                ) : field.type === 'textarea' ? (
+                                  <div className="relative">
+                                    <textarea
+                                      value={form.config[field.key] || ''}
+                                      onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
+                                      placeholder={field.placeholder || ''}
+                                      required={field.required}
+                                      rows={3}
+                                      className="input font-mono text-xs"
+                                    />
+                                    {field.secret && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
+                                        className="absolute right-2 top-2 text-text-muted hover:text-text-secondary"
+                                      >
+                                        {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                      </button>
+                                    )}
+                                  </div>
+
+                                /* Default: text/password input */
+                                ) : (
+                                  <div className="relative">
+                                    <input
+                                      type={field.secret && !showSecrets[field.key] ? 'password' : 'text'}
+                                      value={form.config[field.key] || ''}
+                                      onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
+                                      placeholder={field.placeholder || ''}
+                                      required={field.required}
+                                      className="input pr-8"
+                                    />
+                                    {field.secret && (
+                                      <button
+                                        type="button"
+                                        onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
+                                        className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary"
+                                      >
+                                        {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                                      </button>
+                                    )}
+                                  </div>
+                                )}
+
+                                {field.helpText && (
+                                  <p className="help-text">{field.helpText}</p>
                                 )}
                               </div>
-
-                            /* Default: text/password input */
-                            ) : (
-                              <div className="relative">
-                                <input
-                                  type={field.secret && !showSecrets[field.key] ? 'password' : 'text'}
-                                  value={form.config[field.key] || ''}
-                                  onChange={e => setForm(f => ({ ...f, config: { ...f.config, [field.key]: e.target.value } }))}
-                                  placeholder={field.placeholder || ''}
-                                  required={field.required}
-                                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                />
-                                {field.secret && (
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowSecrets(s => ({ ...s, [field.key]: !s[field.key] }))}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                                  >
-                                    {showSecrets[field.key] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {field.helpText && (
-                              <p className="text-xs text-gray-400 mt-0.5">{field.helpText}</p>
-                            )}
+                            ))}
                           </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))
+                        </div>
+                      ))
+                    )}
+                  </div>
                 )}
               </div>
-            )}
 
-            <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => { setShowForm(false); resetForm() }}
-                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors">
-                Cancel
-              </button>
-              <button type="submit" disabled={createMutation.isPending}
-                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Create Connector
-              </button>
-            </div>
-          </form>
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-border-muted bg-bg-surface flex-shrink-0">
+                <button type="button" onClick={() => { setShowForm(false); resetForm() }}
+                  className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors">
+                  Cancel
+                </button>
+                <button type="submit" disabled={createMutation.isPending}
+                  className="btn-primary flex items-center gap-2 disabled:bg-text-muted">
+                  {createMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  Create Connector
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
       {/* Connectors List */}
       {isLoading ? (
-        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-gray-400" /></div>
+        <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 animate-spin text-text-muted" /></div>
       ) : connectors.length === 0 ? (
-        <div className="text-center py-16 text-gray-500">
-          <Database className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+        <div className="text-center py-16 text-text-secondary">
+          <Database className="w-10 h-10 mx-auto mb-3 text-text-muted" />
           <p className="font-medium">No connectors yet</p>
           <p className="text-sm mt-1">Add your first database connector to get started</p>
         </div>
@@ -605,27 +705,52 @@ export function ConnectorsPage() {
         <div className="space-y-3">
           {connectors.map((c: any) => {
             const typeInfo = DB_TYPES.find(t => t.value === c.type)
-            const categoryColor = CATEGORY_COLORS[typeInfo?.category || ''] || 'bg-gray-100 text-gray-600'
+            const categoryColor = CATEGORY_COLORS[typeInfo?.category || ''] || 'bg-bg-surface text-text-secondary'
             const testResult = testResults[c.id]
             const schemaResult = schemaStatus[c.id]
+            const myPerm = myPerms.find((p: any) => p.connector_id === c.id)
 
             return (
-              <div key={c.id} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+              <div key={c.id} className="bg-bg-card border border-border-default rounded-xl overflow-hidden shadow-sm">
                 <div className="flex items-center px-5 py-4 gap-4">
-                  <div className="w-9 h-9 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Database className="w-5 h-5 text-indigo-600" />
+                  <div className="w-9 h-9 bg-accent-50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Database className="w-5 h-5 text-accent-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-gray-900 text-sm">{c.name}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-text-primary text-sm">{c.name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${categoryColor}`}>
                         {c.type}
                       </span>
                       {!c.is_active && (
                         <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">inactive</span>
                       )}
+                      {/* Policy badge */}
+                      {c.is_open_access ? (
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 font-medium flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> Open Access
+                        </span>
+                      ) : (
+                        <span className="text-xs px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 font-medium flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" /> Closed
+                        </span>
+                      )}
+                      {/* Expiration badge */}
+                      {myPerm?.expires_at && (() => {
+                        const parsedDate = parseUTC(myPerm.expires_at)
+                        return (
+                          <span
+                            className="text-xs px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold flex items-center gap-1 border border-amber-300 shadow-sm animate-pulse"
+                            title={`Expires: ${parsedDate ? parsedDate.toLocaleString() : ''}`}
+                          >
+                            <Clock className="w-3 h-3 text-amber-600" />
+                            {getRemainingTime(myPerm.expires_at)}
+                            {parsedDate && ` (${parsedDate.toLocaleDateString()} ${parsedDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`}
+                          </span>
+                        )
+                      })()}
                     </div>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="text-xs text-text-muted mt-0.5">
                       {c.schema_cached_at
                         ? `Schema cached ${new Date(c.schema_cached_at).toLocaleDateString()}`
                         : '[!] Schema not cached - run refresh to enable NL queries'}
@@ -637,7 +762,7 @@ export function ConnectorsPage() {
                     <button
                       onClick={() => testConnection(c.id)}
                       disabled={testResult === 'loading'}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border-default rounded-lg hover:bg-bg-surface text-text-secondary transition-colors"
                     >
                       {testResult === 'loading' ? <Loader2 className="w-3 h-3 animate-spin" /> :
                        testResult === 'ok' ? <CheckCircle className="w-3 h-3 text-green-500" /> :
@@ -648,7 +773,7 @@ export function ConnectorsPage() {
                     <button
                       onClick={() => refreshSchema(c.id)}
                       disabled={schemaResult === 'loading'}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg hover:bg-gray-50 text-gray-600 transition-colors"
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-border-default rounded-lg hover:bg-bg-surface text-text-secondary transition-colors"
                     >
                       {schemaResult === 'loading' ? <Loader2 className="w-3 h-3 animate-spin" /> :
                        schemaResult === 'ok' ? <CheckCircle className="w-3 h-3 text-green-500" /> :
@@ -659,7 +784,7 @@ export function ConnectorsPage() {
                     {canEdit && (
                       <button
                         onClick={() => openEditModal(c)}
-                        className="text-gray-400 hover:text-indigo-500 p-1 transition-colors"
+                        className="text-text-muted hover:text-accent-500 p-1 transition-colors"
                         title="Edit"
                       >
                         <Pencil className="w-4 h-4" />
@@ -667,14 +792,24 @@ export function ConnectorsPage() {
                     )}
                     <button
                       onClick={() => setExpandedId(expandedId === c.id ? null : c.id)}
-                      className="text-gray-400 hover:text-gray-600 p-1"
+                      className="text-text-muted hover:text-text-secondary p-1"
                     >
                       {expandedId === c.id ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </button>
                     {canDelete && (
                       <button
-                        onClick={() => confirm(`Delete ${c.name}?`) && deleteMutation.mutate(c.id)}
-                        className="text-gray-400 hover:text-red-500 p-1 transition-colors"
+                        onClick={() => {
+                          setConfirmModal({
+                            isOpen: true,
+                            title: 'Delete Database Connector',
+                            message: `Are you sure you want to delete the database connector "${c.name}"? This action is irreversible.`,
+                            onConfirm: () => {
+                              deleteMutation.mutate(c.id)
+                              setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                            }
+                          })
+                        }}
+                        className="text-text-muted hover:text-red-500 p-1 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -684,7 +819,7 @@ export function ConnectorsPage() {
 
                 {/* Expanded schema view */}
                 {expandedId === c.id && c.schema_cached_at && (
-                  <div className="border-t border-gray-100 px-5 py-4 bg-gray-50">
+                  <div className="border-t border-border-muted px-5 py-4 bg-bg-surface">
                     <SchemaPreview connectorId={c.id} />
                   </div>
                 )}
@@ -699,21 +834,21 @@ export function ConnectorsPage() {
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setEditTarget(null)} />
-            <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+            <div className="relative bg-bg-card rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border-muted sticky top-0 bg-bg-card z-10">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Edit Connector</h3>
-                  <p className="text-sm text-gray-500 mt-0.5">{editTarget.type}</p>
+                  <h3 className="text-lg font-semibold text-text-primary">Edit Connector</h3>
+                  <p className="text-sm text-text-secondary mt-0.5">{editTarget.type}</p>
                 </div>
-                <button className="p-1 rounded-md hover:bg-gray-100" onClick={() => setEditTarget(null)}>
-                  <X className="w-5 h-5 text-gray-400" />
+                <button className="p-1 rounded-md hover:bg-bg-surface" onClick={() => setEditTarget(null)}>
+                  <X className="w-5 h-5 text-text-muted" />
                 </button>
               </div>
               <div className="px-6 py-4 space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Display Name</label>
+                  <label className="block text-xs font-medium text-text-primary mb-1">Display Name</label>
                   <input value={editTarget.name} onChange={e => setEditTarget(p => p ? { ...p, name: e.target.value } : p)}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                    className="input" />
                 </div>
                 {editTarget.type === 'sqlite' ? (
                   <SqliteConnectorForm
@@ -722,22 +857,22 @@ export function ConnectorsPage() {
                     sqliteFile={editSqliteFile}
                     setSqliteFile={setEditSqliteFile}
                     sqlitePath={editTarget.config.path || ''}
-                    setSqlitePath={(p) => setEditTarget(p => p ? { ...p, config: { ...p.config, path: p } } : p)}
+                    setSqlitePath={(newPath) => setEditTarget(prev => prev ? { ...prev, config: { ...prev.config, path: newPath } } : prev)}
                     isEdit={true}
                     existingPath={editTarget.config.path}
                   />
                 ) : (
                   editType?.fieldGroups.map((group, gi) => (
                     <div key={gi}>
-                      {group.title && <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">{group.title}</p>}
+                      {group.title && <p className="form-section-label">{group.title}</p>}
                       <div className="grid grid-cols-2 gap-3">
                         {group.fields.map(field => (
                           <div key={field.key} className={field.fullWidth ? 'col-span-2' : ''}>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">{field.label}</label>
+                            <label className="block text-xs font-medium text-text-primary mb-1">{field.label}</label>
                             {field.type === 'select' && field.options ? (
                               <select value={editTarget.config[field.key] || ''}
                                 onChange={e => setEditTarget(p => p ? { ...p, config: { ...p.config, [field.key]: e.target.value } } : p)}
-                                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
+                                className="input">
                                 {field.options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                               </select>
                             ) : (
@@ -745,10 +880,10 @@ export function ConnectorsPage() {
                                 <input type={field.secret && !showSecrets[`edit_${field.key}`] ? 'password' : 'text'}
                                   value={editTarget.config[field.key] || ''}
                                   onChange={e => setEditTarget(p => p ? { ...p, config: { ...p.config, [field.key]: e.target.value } } : p)}
-                                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                                  className="input pr-8" />
                                 {field.secret && (
                                   <button type="button" onClick={() => setShowSecrets(s => ({ ...s, [`edit_${field.key}`]: !s[`edit_${field.key}`] }))}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-secondary">
                                     {showSecrets[`edit_${field.key}`] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                                   </button>
                                 )}
@@ -760,10 +895,38 @@ export function ConnectorsPage() {
                     </div>
                   ))
                 )}
+
+                {/* Policy Toggle Section */}
+                <div className="border-t border-border-default pt-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-medium text-text-primary mb-0.5">Default Access Policy</label>
+                      <p className="text-xs text-text-secondary">
+                        {editTarget.default_policy === 'deny_all'
+                          ? 'Only explicitly granted users can access'
+                          : 'All authenticated users can access (open)'}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePolicy(editTarget)}
+                      disabled={updatePolicyMutation.isPending}
+                      className={clsx(
+                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                        editTarget.default_policy === 'deny_all'
+                          ? 'bg-green-100 text-green-800 hover:bg-green-200'
+                          : 'bg-red-100 text-red-800 hover:bg-red-200',
+                        updatePolicyMutation.isPending && 'opacity-50 cursor-not-allowed'
+                      )}
+                    >
+                      {updatePolicyMutation.isPending ? 'Updating...' : (editTarget.default_policy === 'deny_all' ? 'Open Access' : 'Close Access')}
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 sticky bottom-0">
-                <button className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900" onClick={() => setEditTarget(null)}>Cancel</button>
-                <button className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium"
+              <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-muted bg-bg-surface sticky bottom-0">
+                <button className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary" onClick={() => setEditTarget(null)}>Cancel</button>
+                <button className="btn-primary flex items-center gap-2"
                   disabled={isSaving}
                   onClick={handleUpdate}>
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : null} Save Changes
@@ -773,6 +936,78 @@ export function ConnectorsPage() {
           </div>
         )
       })()}
+
+      {/* Policy Change Confirmation Dialog */}
+      {showPolicyDialog && selectedConnectorForPolicy && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowPolicyDialog(false)} />
+          <div className="relative bg-bg-card rounded-xl shadow-2xl w-full max-w-sm mx-4">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border-muted">
+              <h3 className="text-lg font-semibold text-text-primary">Open Access Warning</h3>
+              <button className="p-1 rounded-md hover:bg-bg-surface" onClick={() => setShowPolicyDialog(false)}>
+                <X className="w-5 h-5 text-text-muted" />
+              </button>
+            </div>
+            <div className="px-6 py-4">
+              <div className="flex items-start gap-3 mb-4">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm text-text-primary font-medium mb-1">Allow all authenticated users?</p>
+                  <p className="text-sm text-text-secondary">
+                    This will allow <strong>all authenticated users</strong> to query <strong>{selectedConnectorForPolicy.name}</strong> until explicit rules are added.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-border-muted bg-bg-surface">
+              <button
+                className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary font-medium"
+                onClick={() => setShowPolicyDialog(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-2"
+                onClick={confirmPolicyChange}
+                disabled={updatePolicyMutation.isPending}
+              >
+                {updatePolicyMutation.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {updatePolicyMutation.isPending ? 'Updating...' : 'Confirm - Open Access'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-[2px] transition-all duration-300 animate-fade-in">
+          <div className="bg-white rounded-lg shadow-xl border border-border-default max-w-sm w-full p-6 animate-scale-in">
+            <div className="flex items-center gap-3 text-red-600 mb-3">
+              <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+              <h3 className="text-base font-bold text-gray-900">{confirmModal.title}</h3>
+            </div>
+            <p className="text-xs text-text-secondary mb-5 leading-relaxed">
+              {confirmModal.message}
+            </p>
+            <div className="flex justify-end gap-2.5">
+              <button
+                type="button"
+                className="btn-secondary text-xs px-3.5 py-1.5"
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-danger text-xs px-3.5 py-1.5"
+                onClick={confirmModal.onConfirm}
+              >
+                Delete Connector
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -783,29 +1018,29 @@ function SchemaPreview({ connectorId }: { connectorId: string }) {
     queryFn: () => api.get(`/api/connectors/${connectorId}/schema`).then(r => r.data),
   })
 
-  if (isLoading) return <div className="flex items-center gap-2 text-xs text-gray-400"><Loader2 className="w-3 h-3 animate-spin" /> Loading schema...</div>
-  if (!data?.tables?.length) return <p className="text-xs text-gray-400">No tables found</p>
+  if (isLoading) return <div className="flex items-center gap-2 text-xs text-text-muted"><Loader2 className="w-3 h-3 animate-spin" /> Loading schema...</div>
+  if (!data?.tables?.length) return <p className="text-xs text-text-muted">No tables found</p>
 
   return (
     <div>
-      <p className="text-xs font-semibold text-gray-600 mb-2">{data.tables.length} tables</p>
+      <p className="text-xs font-semibold text-text-secondary mb-2">{data.tables.length} tables</p>
       <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto">
         {data.tables.map((t: any) => (
-          <div key={t.name} className="bg-white border border-gray-200 rounded-lg p-2">
-            <p className="text-xs font-semibold text-gray-700 mb-1">
+          <div key={t.name} className="bg-bg-card border border-border-default rounded-lg p-2">
+            <p className="text-xs font-semibold text-text-primary mb-1">
               {t.schema ? `${t.schema}.` : ''}{t.name}
-              {t.row_count > 0 && <span className="text-gray-400 font-normal ml-1">({t.row_count.toLocaleString()} rows)</span>}
+              {t.row_count > 0 && <span className="text-text-muted font-normal ml-1">({t.row_count.toLocaleString()} rows)</span>}
             </p>
             <div className="space-y-0.5">
               {t.columns.slice(0, 6).map((c: any) => (
                 <div key={c.name} className="flex items-center gap-1.5 text-xs">
                   {c.primary_key && <span className="text-yellow-500 text-xs font-mono font-bold">PK</span>}
-                  <span className="text-gray-700">{c.name}</span>
-                  <span className="text-gray-400 text-xs">{c.type}</span>
+                  <span className="text-text-primary">{c.name}</span>
+                  <span className="text-text-muted text-xs">{c.type}</span>
                 </div>
               ))}
               {t.columns.length > 6 && (
-                <p className="text-xs text-gray-400">+{t.columns.length - 6} more</p>
+                <p className="text-xs text-text-muted">+{t.columns.length - 6} more</p>
               )}
             </div>
           </div>
@@ -881,17 +1116,17 @@ export function SqliteConnectorForm({
 
   return (
     <div className="space-y-4 col-span-2">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-2">
-        <label className="text-xs font-semibold text-gray-700 uppercase tracking-wider font-mono">
+      <div className="flex items-center justify-between border-b border-border-default pb-2">
+        <label className="text-xs font-semibold text-text-primary uppercase tracking-wider font-mono">
           SQLite Setup Method
         </label>
-        <div className="flex bg-gray-100 rounded-lg p-0.5 text-xs font-medium">
+        <div className="flex bg-bg-surface rounded-lg p-0.5 text-xs font-medium">
           <button
             type="button"
             onClick={() => setSqliteMode('upload')}
             className={clsx(
               'px-3 py-1 rounded-md transition-all',
-              sqliteMode === 'upload' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
+              sqliteMode === 'upload' ? 'bg-bg-card shadow-sm text-accent-600' : 'text-text-secondary hover:text-text-primary'
             )}
           >
             Upload File
@@ -901,7 +1136,7 @@ export function SqliteConnectorForm({
             onClick={() => setSqliteMode('path')}
             className={clsx(
               'px-3 py-1 rounded-md transition-all',
-              sqliteMode === 'path' ? 'bg-white shadow-sm text-indigo-600' : 'text-gray-500 hover:text-gray-900'
+              sqliteMode === 'path' ? 'bg-bg-card shadow-sm text-accent-600' : 'text-text-secondary hover:text-text-primary'
             )}
           >
             Server File Path
@@ -924,8 +1159,8 @@ export function SqliteConnectorForm({
                   <Database className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate max-w-[220px]">{sqliteFile.name}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{formatBytes(sqliteFile.size)}</p>
+                  <p className="text-sm font-medium text-text-primary truncate max-w-[220px]">{sqliteFile.name}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">{formatBytes(sqliteFile.size)}</p>
                 </div>
               </div>
               
@@ -942,24 +1177,24 @@ export function SqliteConnectorForm({
                 <button
                   type="button"
                   onClick={() => setSqliteFile(null)}
-                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-white transition-colors"
+                  className="text-text-muted hover:text-text-secondary p-1 rounded-full hover:bg-bg-card transition-colors"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
           ) : isEdit && isUploaded && !sqliteFile ? (
-            <div className="border border-indigo-100 bg-indigo-50/30 rounded-xl p-4 flex items-center justify-between">
+            <div className="border border-accent-100 bg-accent-50 rounded-xl p-4 flex items-center justify-between">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 bg-accent-100 text-accent-600 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Database className="w-5 h-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate max-w-[220px]">{currentFileName}</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Currently stored database file</p>
+                  <p className="text-sm font-medium text-text-primary truncate max-w-[220px]">{currentFileName}</p>
+                  <p className="text-xs text-text-secondary mt-0.5">Currently stored database file</p>
                 </div>
               </div>
-              <label className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 bg-white border border-indigo-200 px-3 py-1.5 rounded-lg cursor-pointer hover:shadow-sm transition-all flex-shrink-0">
+              <label className="text-xs font-semibold text-accent-600 hover:text-accent-700 bg-bg-card border border-accent-200 px-3 py-1.5 rounded-lg cursor-pointer hover:shadow-sm transition-all flex-shrink-0">
                 Replace File
                 <input
                   type="file"
@@ -973,7 +1208,7 @@ export function SqliteConnectorForm({
             <div
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-indigo-500 hover:bg-indigo-50/10 transition-all cursor-pointer relative"
+              className="border-2 border-dashed border-border-strong rounded-xl p-6 text-center hover:border-accent-500 hover:bg-accent-50 transition-all cursor-pointer relative"
             >
               <input
                 type="file"
@@ -981,13 +1216,13 @@ export function SqliteConnectorForm({
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                 onChange={handleFileChange}
               />
-              <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto mb-3 border border-gray-100">
-                <Plus className="w-6 h-6 text-gray-400" />
+              <div className="w-12 h-12 bg-bg-surface rounded-xl flex items-center justify-center mx-auto mb-3 border border-border-muted">
+                <Plus className="w-6 h-6 text-text-muted" />
               </div>
-              <p className="text-sm font-medium text-gray-700">
-                Drag and drop your SQLite database here, or <span className="text-indigo-600 font-semibold">browse</span>
+              <p className="text-sm font-medium text-text-primary">
+                Drag and drop your SQLite database here, or <span className="text-accent-600 font-semibold">browse</span>
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-text-muted mt-1">
                 Accepts .db, .sqlite, .sqlite3 (Max size: 500MB)
               </p>
             </div>
@@ -1009,7 +1244,7 @@ export function SqliteConnectorForm({
                     setSqliteMode('path');
                     setSqliteFile(null);
                   }}
-                  className="mt-3 text-xs font-semibold text-red-700 hover:text-red-800 bg-white border border-red-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all"
+                  className="mt-3 text-xs font-semibold text-red-700 hover:text-red-800 bg-bg-card border border-red-200 px-3 py-1.5 rounded-lg shadow-sm hover:shadow transition-all"
                 >
                   Switch to Server File Path
                 </button>
@@ -1019,7 +1254,7 @@ export function SqliteConnectorForm({
         </div>
       ) : (
         <div className="space-y-1">
-          <label className="block text-xs font-medium text-gray-600">
+          <label className="block text-xs font-medium text-text-primary">
             Database File Path <span className="text-red-400">*</span>
           </label>
           <input
@@ -1028,9 +1263,9 @@ export function SqliteConnectorForm({
             onChange={(e) => setSqlitePath(e.target.value)}
             placeholder="e.g. /data/sqlite/my_database.db"
             required
-            className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="input"
           />
-          <p className="text-xs text-gray-400 mt-1 font-sans">
+          <p className="help-text font-sans">
             Provide the absolute path to the SQLite file accessible by the backend server.
           </p>
         </div>

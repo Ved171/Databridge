@@ -25,8 +25,15 @@ def verify_password(plain: str, hashed: str) -> bool:
     return pwd_context.verify(plain, hashed)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    to_encode = data.copy()
+def create_access_token(user_or_data: any, expires_delta: Optional[timedelta] = None) -> str:
+    if hasattr(user_or_data, "id") and hasattr(user_or_data, "token_version"):
+        to_encode = {
+            "sub": str(user_or_data.id),
+            "token_version": user_or_data.token_version,
+        }
+    else:
+        to_encode = user_or_data.copy()
+        
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     )
