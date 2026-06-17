@@ -1,4 +1,4 @@
-# 📊 DataBridge — Enterprise Multi-DB Natural Language Query & Governance Platform
+# DataBridge — Enterprise Multi-DB Natural Language Query & Governance Platform
 
 DataBridge is an enterprise-grade, permission-aware data gateway (serving as a local, secure alternative to **CData Connect AI**). It enables AI agents to query, join, and update data across heterogeneous databases using natural language. The system shifts intelligence directly to the client's AI agent by exposing a high-performance **FastMCP Server** integrated with Row-Level Security (RLS), smart schema compression, and persistent DuckDB-driven cross-database federation.
 
