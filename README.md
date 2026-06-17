@@ -22,6 +22,32 @@ Uses a persistent, high-performance DuckDB instance to execute extraction querie
 
 ---
 
+## Core Features
+
+### 1. Hierarchical Organization & User Management
+* **Department Tree Hierarchy:** Organizes users into parent-child departments with soft-delete protections and role propagation.
+* **Dynamic Role Levels:** Roles are structured as a tree with levels recalculated dynamically bottom-up. Leaf roles start at level 1; parent roles increment based on children levels.
+* **Manager-Member Reporting:** Assigns direct managers to team members, complete with loop detection to prevent circular references and permission boundaries to prevent demoting users of equal/higher rank.
+* **Role Audit History:** Keeps an audit trail of user role modifications and promotions using a dedicated history table.
+
+### 2. Multi-DB Semantic Gateway
+* **11 Database Drivers:** Seamless integration with SQL (Postgres, MySQL, SQLite, MSSQL, Oracle), Cloud (Snowflake), NoSQL (MongoDB, Elasticsearch, Redis), and SaaS (Salesforce, HTTP REST API) connectors.
+* **FastMCP Server Integration:** Shuns slow backend chat agents to serve tools and resources directly to client-side AI agents (Cursor, Claude Desktop, etc.) on port `9000`.
+* **Zero-Cost Semantic Resolver:** Substitutes expensive vector database searches with ultra-fast token scoring (<5ms) to filter relevant metadata.
+* **Context Token Compressor:** Shrinks database schemas by 65–75% to optimize context-window usage and reduce LLM token overhead.
+* **Atlas Tribal Knowledge Ingestion:** Automatically injects gotchas, soft-delete states, status mappings, and documentation (stored in `backend/app/atlas/`) directly into schemas parsed by the LLM.
+
+### 3. Enterprise Access Control & Security
+* **Granular CRUD Permission Matrix:** Restricts connector actions (create, read, update, delete) individually per user and connector.
+* **Dynamic Row-Level Security (RLS):** Modifies incoming queries and filter parameters on the fly to enforce tenant isolation (e.g., matching database records against logged-in user and department criteria).
+* **Reference Protection Guards:** Prevents accidental deletion of system-critical roles or departments, and blocks deleting active roles referenced in active workspace permission tables.
+
+### 4. Resilient Database Migrations
+* **Idempotent Database Migrations:** Migration scripts automatically check table/column status before execution, supporting smooth database builds from scratch on both SQLite and PostgreSQL.
+* **Superadmin Bootstrapping:** CLI commands to register system roles and seed the initial Superadmin user safely.
+
+---
+
 ## System Architecture
 
 ```
