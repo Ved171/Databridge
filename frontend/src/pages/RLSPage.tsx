@@ -56,6 +56,8 @@ interface RLSContext {
   is_manager: boolean
 }
 
+const EMPTY_FILTERS: RLSFilter[] = []
+
 const PLACEHOLDERS = [
   { token: '{user.employee_code}', desc: "Employee code" },
   { token: '{user.name}', desc: "Name" },
@@ -82,14 +84,14 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   // Form Fields
   const [connectorId, setConnectorId] = useState('')
   const [searchParams] = useSearchParams()
+  const preConnector = searchParams.get('connector')
   useEffect(() => {
     if (embedded && externalConnectorId) {
       setConnectorId(externalConnectorId)
       return
     }
-    const preConnector = searchParams.get('connector')
     if (preConnector) setConnectorId(preConnector)
-  }, [embedded, externalConnectorId, searchParams])
+  }, [embedded, externalConnectorId, preConnector])
   const [selectedTables, setSelectedTables] = useState<string[]>([])
   const [targetType, setTargetType] = useState<'role' | 'dept' | 'user'>('role')
   const [appliesToRoleIds, setAppliesToRoleIds] = useState<string[]>([])
@@ -137,13 +139,13 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   const [hierarchyBaseLevel, setHierarchyBaseLevel] = useState<number>(1)
 
   // Queries
-  const { data: filters = [], isLoading: isFiltersLoading } = useQuery<RLSFilter[]>({
+  const { data: filters = EMPTY_FILTERS, isLoading: isFiltersLoading } = useQuery<RLSFilter[]>({
     queryKey: ['rlsFilters'],
     queryFn: () => api.get('/api/rls/filters/').then(r => r.data),
   })
 
   useEffect(() => {
-    setSelectedRlsIds([])
+    setSelectedRlsIds(prev => (prev.length > 0 ? [] : prev))
   }, [connectorId, filters])
 
   const { data: connectors = [] } = useQuery<Connector[]>({
@@ -938,7 +940,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                     className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
                     <option value="">-- Choose User --</option>
-                    {users.map(u => (
+                    {users.filter((u: any) => !u.is_superadmin && !(u.role || '').toLowerCase().includes('super') && !u.name.toLowerCase().includes('super') && !u.email.toLowerCase().includes('super')).map(u => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.email})
                       </option>
@@ -1084,7 +1086,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                     Select Role
                   </label>
                   <MultiSelect
-                    options={roles.map(r => ({ id: r.id, label: r.name }))}
+                    options={roles.filter(r => !(r.slug || '').toLowerCase().includes('super') && !(r.name || '').toLowerCase().includes('super')).map(r => ({ id: r.id, label: r.name }))}
                     value={appliesToRoleIds}
                     onChange={setAppliesToRoleIds}
                     placeholder="Select role(s)..."
@@ -1117,7 +1119,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                     onChange={e => setAppliesToUserId(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
                   >
-                    {users.map(u => (
+                    {users.filter((u: any) => !u.is_superadmin && !(u.role || '').toLowerCase().includes('super') && !u.name.toLowerCase().includes('super') && !u.email.toLowerCase().includes('super')).map(u => (
                       <option key={u.id} value={u.id}>
                         {u.name} ({u.email})
                       </option>
@@ -1174,7 +1176,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                       className="px-2.5 py-1.5 border border-gray-200 rounded-lg text-xs bg-white focus:border-brand-500 focus:outline-none max-w-xs"
                     >
                       <option value="">-- Select Preview User --</option>
-                      {users.map(u => (
+                      {users.filter((u: any) => !u.is_superadmin && !(u.role || '').toLowerCase().includes('super') && !u.name.toLowerCase().includes('super') && !u.email.toLowerCase().includes('super')).map(u => (
                         <option key={u.id} value={u.id}>
                           {u.name}
                         </option>

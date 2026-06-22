@@ -45,7 +45,7 @@ async def set_is_open_access(connectors, db: AsyncSession) -> None:
     counts_dict = {row[0]: row[1] for row in counts_res.all()}
     
     for c in conns:
-        c.is_open_access = (c.default_policy == 'allow_all' and counts_dict.get(c.id, 0) == 0)
+        c.is_open_access = (c.default_policy == 'allow_all')
 
 
 
@@ -330,7 +330,7 @@ async def get_schema(
     return ConnectorSchemaOut(connector_id=connector_id, tables=allowed_tables)
 
 
-# ─── SQLite File Upload Helpers ──────────────────────────────────────────────
+# â”€â”€â”€ SQLite File Upload Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 ALLOWED_SQLITE_EXTENSIONS = {".db", ".sqlite", ".sqlite3"}
 
@@ -388,7 +388,7 @@ async def _save_sqlite_file(file: UploadFile) -> str:
     return dest_path
 
 
-# ─── SQLite Upload Endpoints ─────────────────────────────────────────────────
+# â”€â”€â”€ SQLite Upload Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 @router.post("/upload-sqlite", response_model=ConnectorOut)
 async def create_sqlite_connector_via_upload(

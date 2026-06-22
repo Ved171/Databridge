@@ -88,7 +88,13 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
           {/* Notifications Dropdown */}
           <div className="relative" ref={notificationsRef}>
             <button
-              onClick={() => setShowNotifications(!showNotifications)}
+              onClick={() => {
+                const willShow = !showNotifications;
+                setShowNotifications(willShow);
+                if (willShow && unreadCount > 0) {
+                  markAllReadMutation.mutate();
+                }
+              }}
               className="p-1.5 rounded-full text-sidebar-text hover:bg-sidebar-hover hover:text-on-surface transition-colors relative"
             >
               <Bell className="w-5 h-5" />
@@ -103,14 +109,6 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
               <div className="absolute left-6 mt-2 w-72 bg-white rounded-lg shadow-xl border border-border-default z-50 py-2 animate-scale-in text-on-surface">
                 <div className="px-4 py-2 border-b border-border-muted flex items-center justify-between">
                   <span className="text-xs font-bold text-text-primary">Notifications</span>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={() => markAllReadMutation.mutate()}
-                      className="text-[10px] text-accent-600 hover:text-accent-700 hover:underline font-semibold"
-                    >
-                      Mark all as read
-                    </button>
-                  )}
                 </div>
                 <div className="max-h-60 overflow-y-auto divide-y divide-border-muted">
                   {notifications.length === 0 ? (

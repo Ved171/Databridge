@@ -12,6 +12,7 @@ from app.core.deps import (
     resolve_department_chain, resolve_managed_users,
     check_table_permission, check_connector_permission, is_grant_active,
 )
+from app.services.schema_cache import invalidate_connector_schema
 from app.models import (
     User, ConnectorPermission, RLSPolicy, Connector, TablePermission, 
     TablePermissionDepartment, TablePermissionRole,
@@ -538,6 +539,7 @@ async def create_table_permission_rule(
         db.add(role_perm)
 
     await db.commit()
+    invalidate_connector_schema()
 
     # Re-load with options
     stmt = select(TablePermission).options(
@@ -602,6 +604,7 @@ async def update_table_permission_rule(
         db.add(role_perm)
 
     await db.commit()
+    invalidate_connector_schema()
 
     # Re-fetch
     stmt = select(TablePermission).options(
@@ -649,6 +652,7 @@ async def delete_table_permission_rule(
         raise HTTPException(status_code=404, detail="Table permission not found")
     await db.delete(perm)
     await db.commit()
+    invalidate_connector_schema()
     return {"status": "deleted"}
 
 

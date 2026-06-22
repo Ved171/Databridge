@@ -402,7 +402,7 @@ async def tool_get_database_schema(
     connector = await _get_active_connector(ctx, db_id)
     if not connector:
         return f"Error: Database '{db_id}' not found."
-    if not await check_connector_permission(db_id, "read", ctx.user, ctx.db):
+    if not await check_connector_permission(str(connector.id), "read", ctx.user, ctx.db):
         return "Error: Permission denied (Read)."
     if not connector.schema_cache:
         return "Error: Schema not cached. Admin must run refresh-schema."
@@ -429,7 +429,7 @@ async def tool_get_database_schema(
         t_schema = t.get("schema")
         t_name = t.get("name")
         full_name = f"{t_schema}.{t_name}" if t_schema else t_name
-        if await check_table_permission(db_id, full_name, "read", ctx.user, ctx.db, _cache=cache):
+        if await check_table_permission(str(connector.id), full_name, "read", ctx.user, ctx.db, _cache=cache):
             allowed_tables.append(t)
     tables = allowed_tables
 
@@ -594,7 +594,7 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
         return f"Error: Query validation failed -- {validation_error}"
 
     op = classify_operation(query)
-    if not await check_connector_permission(db_id, op, ctx.user, ctx.db):
+    if not await check_connector_permission(str(connector.id), op, ctx.user, ctx.db):
         return f"Error: Permission denied -- no '{op.upper()}' access on '{connector.name}'."
 
     table_error = await _check_query_table_permissions(
@@ -702,11 +702,11 @@ async def tool_create_record(
     connector = await _get_active_connector(ctx, db_id)
     if not connector:
         return f"Error: Database '{db_id}' not found."
-    if not await check_connector_permission(db_id, "create", ctx.user, ctx.db):
+    if not await check_connector_permission(str(connector.id), "create", ctx.user, ctx.db):
         return f"Error: Permission denied -- no CREATE access on '{connector.name}'."
 
     from app.core.deps import check_table_permission
-    if not await check_table_permission(db_id, table_or_collection, "create", ctx.user, ctx.db):
+    if not await check_table_permission(str(connector.id), table_or_collection, "create", ctx.user, ctx.db):
         return f"Error: Permission denied -- no 'CREATE' access on table/collection '{table_or_collection}'."
 
 
@@ -764,11 +764,11 @@ async def tool_update_record(
     connector = await _get_active_connector(ctx, db_id)
     if not connector:
         return f"Error: Database '{db_id}' not found."
-    if not await check_connector_permission(db_id, "update", ctx.user, ctx.db):
+    if not await check_connector_permission(str(connector.id), "update", ctx.user, ctx.db):
         return f"Error: Permission denied -- no UPDATE access on '{connector.name}'."
 
     from app.core.deps import check_table_permission
-    if not await check_table_permission(db_id, table_or_collection, "update", ctx.user, ctx.db):
+    if not await check_table_permission(str(connector.id), table_or_collection, "update", ctx.user, ctx.db):
         return f"Error: Permission denied -- no 'UPDATE' access on table/collection '{table_or_collection}'."
 
 
@@ -823,11 +823,11 @@ async def tool_delete_record(
     connector = await _get_active_connector(ctx, db_id)
     if not connector:
         return f"Error: Database '{db_id}' not found."
-    if not await check_connector_permission(db_id, "delete", ctx.user, ctx.db):
+    if not await check_connector_permission(str(connector.id), "delete", ctx.user, ctx.db):
         return f"Error: Permission denied -- no DELETE access on '{connector.name}'."
 
     from app.core.deps import check_table_permission
-    if not await check_table_permission(db_id, table_or_collection, "delete", ctx.user, ctx.db):
+    if not await check_table_permission(str(connector.id), table_or_collection, "delete", ctx.user, ctx.db):
         return f"Error: Permission denied -- no 'DELETE' access on table/collection '{table_or_collection}'."
 
 
@@ -1223,7 +1223,7 @@ async def tool_mirror_table(
     connector = await _get_active_connector(ctx, db_id)
     if not connector:
         return f"Error: Database '{db_id}' not found."
-    if not await check_connector_permission(db_id, "read", ctx.user, ctx.db):
+    if not await check_connector_permission(str(connector.id), "read", ctx.user, ctx.db):
         return f"Error: Permission denied (Read) on '{connector.name}'."
 
     if ";" in table_name or "--" in table_name:

@@ -1142,7 +1142,7 @@ export function PackagesPage({ embedded = false }: PackagesPageProps = {}) {
                       className="flex-1 min-w-0 px-3 py-2 border border-gray-250 rounded-lg text-sm bg-white focus:outline-none"
                     >
                       <option value="">-- Choose User --</option>
-                      {users.map(u => (
+                      {users.filter((u: any) => !u.is_superadmin).map(u => (
                         <option key={u.id} value={u.id}>
                           {u.name} ({u.email})
                         </option>
@@ -1422,7 +1422,7 @@ export function PackagesPage({ embedded = false }: PackagesPageProps = {}) {
                                   className="w-full px-3 py-2 border border-gray-250 rounded-lg text-xs bg-white focus:outline-none focus:border-brand-500"
                                 >
                                   <option value="">-- Select Role --</option>
-                                  {roles.map(r => (
+                                  {roles.filter(r => r.slug !== 'superadmin' && r.slug !== 'super_admin').map(r => (
                                     <option key={r.id} value={r.id}>{r.name}</option>
                                   ))}
                                 </select>
@@ -1465,7 +1465,7 @@ export function PackagesPage({ embedded = false }: PackagesPageProps = {}) {
                           <div className="space-y-2">
                             <label className="block text-xs font-semibold text-gray-505 uppercase tracking-wider">Target Roles</label>
                             <div className="bg-white border border-gray-200 rounded-lg p-3 max-h-40 overflow-y-auto space-y-2">
-                              {roles.map(r => (
+                              {roles.filter(r => r.slug !== 'superadmin' && r.slug !== 'super_admin').map(r => (
                                 <label key={r.id} className="flex items-center gap-2 text-xs font-medium cursor-pointer">
                                   <input
                                     type="checkbox"

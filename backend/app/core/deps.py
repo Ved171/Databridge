@@ -171,7 +171,7 @@ async def resolve_managed_users(
 ) -> list[str]:
     """
     Returns all user IDs directly or indirectly managed by manager_id.
-    Used in F-08 RLS scoping — available here so F-07 can reference it.
+    Used in F-08 RLS scoping --- available here so F-07 can reference it.
     """
     all_members: set[str] = set()
     current_level = [manager_id]
@@ -237,18 +237,18 @@ def is_grant_active(row) -> bool:
     return True
 
 
-# ── PERMISSION RESOLUTION ORDER ───────────────────────────────────────────────
-# 1. Superadmin          → always allow, skip all checks
-# 2. Explicit deny       → dept chain deny OR direct role deny → immediately False
-# 3. User-level allow    → direct grant to this specific user
-# 4. Role allow          → exact role match (no hierarchy inheritance)
-# 5. Dept chain allow    → user's dept or any ancestor dept
-# 4.5 Package allow/deny → active packages assigned to user's dept/role
-# 6. Default policy      → connector.default_policy == 'allow_all'
+# ------ PERMISSION RESOLUTION ORDER ---------------------------------------------------------------------------------------------------------------------------------------------
+# 1. Superadmin          --- always allow, skip all checks
+# 2. Explicit deny       --- dept chain deny OR direct role deny --- immediately False
+# 3. User-level allow    --- direct grant to this specific user
+# 4. Role allow          --- exact role match (no hierarchy inheritance)
+# 5. Dept chain allow    --- user's dept or any ancestor dept
+# 4.5 Package allow/deny --- active packages assigned to user's dept/role
+# 6. Default policy      --- connector.default_policy == 'allow_all'
 #
 # Deny always wins. Package result (True/False/None) is checked after dept chain.
-# None means no package rule matched — fall through to default policy.
-# ─────────────────────────────────────────────────────────────────────────────
+# None means no package rule matched --- fall through to default policy.
+# ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 async def check_connector_permission(
     connector_id: str,
@@ -269,7 +269,7 @@ async def check_connector_permission(
     role_chain = [str(user.role_id)] if user.role_id else []
     dept_chain = await resolve_department_chain(user.department_id, db, _cache=_cache)
 
-    # ── 1. Explicit deny ──────────────────────────────────────────────
+    # ------ 1. Explicit deny ------------------------------------------------------------------------------------------------------------------------------------------
     if dept_chain:
         dept_deny_rows = await db.execute(
             select(ConnectorPermissionDepartment).join(ConnectorPermission)
@@ -301,7 +301,7 @@ async def check_connector_permission(
             if is_grant_active(row):
                 return False
 
-    # ── 2. User-level allow ───────────────────────────────────────────
+    # ------ 2. User-level allow ---------------------------------------------------------------------------------------------------------------------------------
     user_perm_rows = await db.execute(
         select(ConnectorPermission).where(
             ConnectorPermission.connector_id == connector_id,
@@ -313,7 +313,7 @@ async def check_connector_permission(
         if is_grant_active(row):
             return True
 
-    # ── 3. Role chain allow ───────────────────────────────────────────
+    # ------ 3. Role chain allow ---------------------------------------------------------------------------------------------------------------------------------
     if role_chain:
         role_allow_rows = await db.execute(
             select(ConnectorPermissionRole).join(ConnectorPermission)
@@ -328,7 +328,7 @@ async def check_connector_permission(
             if is_grant_active(row):
                 return True
 
-    # ── 4. Department chain allow ─────────────────────────────────────
+    # ------ 4. Department chain allow ---------------------------------------------------------------------------------------------------------------
     if dept_chain:
         dept_allow_rows = await db.execute(
             select(ConnectorPermissionDepartment).join(ConnectorPermission)
@@ -344,20 +344,85 @@ async def check_connector_permission(
                 if row.role_id is None or str(row.role_id) in role_chain:
                     return True
 
-    # ── 4.5. Package allow / deny ─────────────────────────────────────
+    # ------ 4.5. Package allow / deny ---------------------------------------------------------------------------------------------------------------
     from app.core.packages import check_connector_via_package
     pkg_result = await check_connector_via_package(connector_id, operation, user, db)
     if pkg_result is not None:
         return pkg_result
 
-    # ── 5. Default connector policy ───────────────────────────────────
-    has_any_rules = await db.execute(
-        select(func.count(ConnectorPermission.id)).where(
-            ConnectorPermission.connector_id == connector_id
-        )
+    # ------ 4.8. Table-level allow rules fallback ---------------------------------------------------------------------------------------------------
+    # If the user is granted table-level access to at least one table on this connector, they should be able to view and access the connector.
+    from app.models import TablePermission, TablePermissionDepartment, TablePermissionRole, PackageTableRule
+    
+    # Check direct user table-permission
+    user_tp_res = await db.execute(
+        select(TablePermission.id).where(
+            TablePermission.connector_id == connector_id,
+            TablePermission.applies_to_user_id == str(user.id),
+            getattr(TablePermission, flag) == True,
+        ).limit(1)
     )
+    if user_tp_res.scalar_one_or_none() is not None:
+        return True
+
+    # Check role table-permission
+    if role_chain:
+        role_tp_res = await db.execute(
+            select(TablePermissionRole.id).join(TablePermission)
+            .where(
+                TablePermission.connector_id == connector_id,
+                TablePermissionRole.role_id.in_(role_chain),
+                TablePermissionRole.is_deny == False,
+                getattr(TablePermissionRole, flag) == True,
+            ).limit(1)
+        )
+        if role_tp_res.scalar_one_or_none() is not None:
+            return True
+
+    # Check department table-permission
+    if dept_chain:
+        dept_tp_res = await db.execute(
+            select(TablePermissionDepartment).join(TablePermission)
+            .where(
+                TablePermission.connector_id == connector_id,
+                TablePermissionDepartment.department_id.in_(dept_chain),
+                TablePermissionDepartment.is_deny == False,
+                getattr(TablePermissionDepartment, flag) == True,
+            )
+        )
+        for row in dept_tp_res.scalars():
+            if row.role_id is None or str(row.role_id) in role_chain:
+                return True
+
+    # Check package table-permission
+    from app.core.packages import resolve_active_packages
+    active_packages = await resolve_active_packages(user, db)
+    if active_packages:
+        pack_ids = [str(p.id) for p in active_packages]
+        pkg_tp_res = await db.execute(
+            select(PackageTableRule.id).where(
+                PackageTableRule.package_id.in_(pack_ids),
+                PackageTableRule.connector_id == connector_id,
+                PackageTableRule.is_deny == False,
+                getattr(PackageTableRule, flag) == True,
+            ).limit(1)
+        )
+        if pkg_tp_res.scalar_one_or_none() is not None:
+            return True
+
+    # ------ 5. Default connector policy ---------------------------------------------------------------------------------------------------------
     connector = await db.get(Connector, connector_id)
-    return has_any_rules.scalar() == 0 and connector.default_policy == 'allow_all'
+    if connector.default_policy == 'allow_all':
+        if operation == 'read':
+            return True
+        # For non-read operations, fall back to checking if there are no rules
+        has_any_rules = await db.execute(
+            select(func.count(ConnectorPermission.id)).where(
+                ConnectorPermission.connector_id == connector_id
+            )
+        )
+        return has_any_rules.scalar() == 0
+    return False
 
 
 def _table_name_matches(perm_tbl: str, target_tbl: str) -> bool:
@@ -498,7 +563,7 @@ async def check_table_permission(
         role_chain = [str(user.role_id)] if user.role_id else []
         dept_chain = await resolve_department_chain(user.department_id, db, _cache=_cache)
 
-        # ── 1. Explicit deny — any source, checked first ──────────────────
+        # ------ 1. Explicit deny --- any source, checked first ------------------------------------------------------
         # Check dept chain deny
         if dept_chain:
             dept_deny = await db.execute(
@@ -528,7 +593,7 @@ async def check_table_permission(
             if role_deny.scalar_one_or_none():
                 return False
 
-        # ── 2. User-level allow ───────────────────────────────────────────
+        # ------ 2. User-level allow ---------------------------------------------------------------------------------------------------------------------------------
         user_perm = await db.execute(
             select(TablePermission).where(
                 TablePermission.id.in_(matched_ids),
@@ -539,7 +604,7 @@ async def check_table_permission(
         if user_perm.scalar_one_or_none():
             return True
 
-        # ── 3. Role chain allow ───────────────────────────────────────────
+        # ------ 3. Role chain allow ---------------------------------------------------------------------------------------------------------------------------------
         if role_chain:
             role_allow = await db.execute(
                 select(TablePermissionRole).join(TablePermission)
@@ -553,7 +618,7 @@ async def check_table_permission(
             if role_allow.scalar_one_or_none():
                 return True
 
-        # ── 4. Department chain allow ─────────────────────────────────────
+        # ------ 4. Department chain allow ---------------------------------------------------------------------------------------------------------------
         if dept_chain:
             dept_allow = await db.execute(
                 select(TablePermissionDepartment).join(TablePermission)
@@ -568,13 +633,13 @@ async def check_table_permission(
                 if row.role_id is None or str(row.role_id) in role_chain:
                     return True
 
-    # ── 4.5. Package allow / deny ─────────────────────────────────────
+    # ------ 4.5. Package allow / deny ---------------------------------------------------------------------------------------------------------------
     from app.core.packages import check_table_via_package
     pkg_result = await check_table_via_package(connector_id, table_name, operation, user, db)
     if pkg_result is not None:
         return pkg_result
 
-    # ── 5. Fallback ───────────────────────────────────────────────────
+    # ------ 5. Fallback ---------------------------------------------------------------------------------------------------------------------------------------------------------
     # If any table rules exist for the connector, default behavior is DENY.
     # Otherwise, since connector-level permission is allowed, all tables are accessible.
     if has_table_rules:

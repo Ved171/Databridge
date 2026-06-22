@@ -763,7 +763,7 @@ export function PermissionsPage({
                                 className="input py-1.5 text-xs w-full sm:w-40 bg-white border border-gray-200"
                               >
                                 <option value="">All Roles</option>
-                                {roles.map(r => (
+                                {roles.filter(r => !(r.slug || '').toLowerCase().includes('super') && !(r.name || '').toLowerCase().includes('super')).map(r => (
                                   <option key={r.id} value={r.id}>{r.name}</option>
                                 ))}
                               </select>
@@ -823,10 +823,10 @@ export function PermissionsPage({
                                         key={u.id}
                                         id={activePerm ? `grant-${activePerm.id}` : undefined}
                                         className={`transition-all duration-300 ${hasAnyAccess && !activePerm
-                                            ? 'border-l-2 border-amber-300'
-                                            : hasAnyAccess
-                                              ? ''
-                                              : 'opacity-40'
+                                          ? 'border-l-2 border-amber-300'
+                                          : hasAnyAccess
+                                            ? ''
+                                            : 'opacity-40'
                                           } ${isProtected && !isSelf ? 'bg-gray-50' : ''} ${isHighlighted ? 'ring-2 ring-amber-400 bg-amber-50/50' : ''}`}
                                       >
                                         <td className="px-6 py-3">
@@ -1137,7 +1137,7 @@ export function PermissionsPage({
                                                 }}
                                               >
                                                 <option value="">- All Roles -</option>
-                                                {roles.map(r => (
+                                                {roles.filter(r => !(r.slug || '').toLowerCase().includes('super') && !(r.name || '').toLowerCase().includes('super')).map(r => (
                                                   <option key={r.id} value={r.id}>{r.name}</option>
                                                 ))}
                                               </select>
@@ -1164,7 +1164,7 @@ export function PermissionsPage({
                                   >
                                     <option value="">- add role -</option>
                                     {roles
-                                      .filter(r => !tableForm.roles.some(tr => tr.role_id === r.id))
+                                      .filter(r => !(r.slug || '').toLowerCase().includes('super') && !(r.name || '').toLowerCase().includes('super') && !tableForm.roles.some(tr => tr.role_id === r.id))
                                       .map(r => (
                                         <option key={r.id} value={r.id}>{r.name}</option>
                                       ))
@@ -1277,7 +1277,7 @@ export function PermissionsPage({
                                       onChange={e => setTableForm({ ...tableForm, applies_to_user_id: e.target.value })}
                                     >
                                       <option value="">- no user override -</option>
-                                      {users.map((u: any) => (
+                                      {users.filter((u: any) => !u.is_superadmin && !(u.role || '').toLowerCase().includes('super') && !u.name.toLowerCase().includes('super') && !u.email.toLowerCase().includes('super')).map((u: any) => (
                                         <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                                       ))}
                                     </select>
@@ -1821,7 +1821,7 @@ export function PermissionsPage({
                                                 }}
                                               >
                                                 <option value="">- All Roles -</option>
-                                                {roles.map(r => (
+                                                {roles.filter(r => !(r.slug || '').toLowerCase().includes('super') && !(r.name || '').toLowerCase().includes('super')).map(r => (
                                                   <option key={r.id} value={r.id}>{r.name}</option>
                                                 ))}
                                               </select>
@@ -1894,7 +1894,7 @@ export function PermissionsPage({
                               <h4 className="text-sm font-semibold text-gray-800 mb-2">Role Permissions</h4>
                               <div className="flex gap-2 mb-3">
                                 <MultiSelect
-                                  options={roles.map(r => ({ id: r.id, label: r.name }))}
+                                  options={roles.filter(r => !(r.slug || '').toLowerCase().includes('super') && !(r.name || '').toLowerCase().includes('super')).map(r => ({ id: r.id, label: r.name }))}
                                   value={connectorGrantsForm.roles.map(r => r.role_id)}
                                   onChange={ids => {
                                     setConnectorGrantsForm({
@@ -2296,7 +2296,7 @@ export function PermissionsPage({
                   onChange={e => setDebugForm({ ...debugForm, user_id: e.target.value })}
                 >
                   <option value="">- select user -</option>
-                  {users.map((u: any) => (
+                  {users.filter((u: any) => !u.is_superadmin && !(u.role || '').toLowerCase().includes('super') && !u.name.toLowerCase().includes('super') && !u.email.toLowerCase().includes('super')).map((u: any) => (
                     <option key={u.id} value={u.id}>{u.name} ({u.email})</option>
                   ))}
                 </select>

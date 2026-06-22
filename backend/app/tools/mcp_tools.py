@@ -62,7 +62,7 @@ async def _resolve_user(token: str, db):
 async def _get_accessible_connectors_with_schema(db, user) -> list[dict]:
     """Fetch all connectors user has read access to, including their cached schemas."""
     from app.models import Connector
-    from app.core.deps import check_connector_permission
+    from app.core.deps import check_connector_permission, check_table_permission
 
     stmt = select(Connector).where(Connector.is_active == True)
     res = await db.execute(stmt)
@@ -73,7 +73,14 @@ async def _get_accessible_connectors_with_schema(db, user) -> list[dict]:
         if await check_connector_permission(c.id, "read", user, db):
             tables = []
             if c.schema_cache and isinstance(c.schema_cache, dict):
-                tables = c.schema_cache.get("tables", [])
+                raw_tables = c.schema_cache.get("tables", [])
+                cache = {}
+                for t in raw_tables:
+                    t_schema = t.get("schema")
+                    t_name = t.get("name")
+                    full_name = f"{t_schema}.{t_name}" if t_schema else t_name
+                    if await check_table_permission(c.id, full_name, "read", user, db, _cache=cache):
+                        tables.append(t)
             accessible.append({
                 "id": c.id,
                 "name": c.name,
@@ -157,6 +164,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
         """
         Lists all database connectors the current user has READ access to.
         Returns IDs, names, types, query format hints, schema status, and atlas status.
+        If the schema is not cached or you can't see the atlas just say these words 'Schema of the connector is not cached please click the refresh schema button on connectors page.'
         """
         return await _build_ctx_and_run(ctx, tool_list_available_databases)
 
