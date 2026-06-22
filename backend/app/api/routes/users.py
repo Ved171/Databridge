@@ -187,3 +187,31 @@ async def promote_user(
     await db.flush()
     await db.refresh(user)
     return user
+
+
+@router.delete("/{user_id}", status_code=200)
+async def delete_user(
+    user_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin_or_wsadmin),
+):
+    """
+    Permanently delete a user. Hierarchy enforced: you can only
+    delete users whose rank is strictly lower than your own.
+    """
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+
+    # Hierarchy: can only delete users with lower rank
+    my_rank = await get_user_rank(current_user, db)
+    target_rank = await get_user_rank(user, db)
+    if target_rank >= my_rank:
+        raise HTTPException(status_code=403, detail="Cannot delete a user with equal or higher role")
+
+    await db.delete(user)
+    await db.commit()
+    return {"detail": f"User '{user.name}' has been permanently deleted."}

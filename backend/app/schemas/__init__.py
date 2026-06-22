@@ -26,8 +26,8 @@ class RegisterRequest(BaseModel):
 class CreateUserRequest(BaseModel):
     name: str
     email: str
-    department_id: Optional[str] = None
-    role_id: Optional[str] = None
+    department_id: str
+    role_id: str
 
 class AcceptInviteRequest(BaseModel):
     token: str

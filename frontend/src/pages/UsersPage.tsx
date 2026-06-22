@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { UserCheck, UserX, ShieldCheck, Plus, X, Copy, Check, Users, Building, ShieldAlert } from 'lucide-react'
+import { Trash2, ShieldCheck, Plus, X, Copy, Check, Users, Building, ShieldAlert, AlertTriangle } from 'lucide-react'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/auth'
@@ -36,12 +36,16 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
   const [promoteTarget, setPromoteTarget] = useState<PromoteTarget | null>(null)
   const [selectedRole, setSelectedRole] = useState<string>('')
   
+  // Delete Confirmation State
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  
   // Invite Modal State
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [inviteName, setInviteName] = useState('')
   const [inviteEmail, setInviteEmail] = useState('')
   const [inviteDeptId, setInviteDeptId] = useState<string>('')
   const [inviteRoleId, setInviteRoleId] = useState<string>('')
+  const [inviteErrors, setInviteErrors] = useState<{ dept?: string; role?: string }>({})
   const [createdUser, setCreatedUser] = useState<UserData | null>(null)
   const [copied, setCopied] = useState(false)
 
@@ -63,14 +67,18 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
     queryFn: () => api.get('/api/roles/').then(r => r.data),
   })
 
-  // Toggle User Active Status
-  const toggleActive = useMutation({
-    mutationFn: (id: string) => api.patch(`/api/users/${id}/toggle-active`),
+  // Delete User
+  const deleteUser = useMutation({
+    mutationFn: (id: string) => api.delete(`/api/users/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
-      toast.success('User active status updated')
+      toast.success('User has been permanently deleted')
+      setDeleteTarget(null)
     },
-    onError: (e: any) => toast.error(e.response?.data?.detail || 'Failed to update user status'),
+    onError: (e: any) => {
+      toast.error(e.response?.data?.detail || 'Failed to delete user')
+      setDeleteTarget(null)
+    },
   })
 
   // Promote User
@@ -109,11 +117,21 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
     e.preventDefault()
     if (!inviteName.trim() || !inviteEmail.trim()) return
 
+    // Validate department & role selection
+    const errors: { dept?: string; role?: string } = {}
+    if (!inviteDeptId) errors.dept = 'Please select a department'
+    if (!inviteRoleId) errors.role = 'Please select an access role'
+    if (Object.keys(errors).length > 0) {
+      setInviteErrors(errors)
+      return
+    }
+    setInviteErrors({})
+
     inviteUserMutation.mutate({
       name: inviteName.trim(),
       email: inviteEmail.trim(),
-      department_id: inviteDeptId || null,
-      role_id: inviteRoleId || null
+      department_id: inviteDeptId,
+      role_id: inviteRoleId
     })
   }
 
@@ -123,6 +141,7 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
     setInviteEmail('')
     setInviteDeptId('')
     setInviteRoleId('')
+    setInviteErrors({})
     setCreatedUser(null)
     setCopied(false)
   }
@@ -287,17 +306,10 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
                           </button>
 
                           <button
-                            className={`text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 border transition-colors whitespace-nowrap ${
-                              u.is_active
-                                ? 'border-red-200 text-red-600 hover:bg-red-50'
-                                : 'border-green-200 text-green-600 hover:bg-green-50'
-                            }`}
-                            onClick={() => toggleActive.mutate(u.id)}
+                            className="text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 border transition-colors whitespace-nowrap border-red-200 text-red-600 hover:bg-red-50"
+                            onClick={() => setDeleteTarget({ id: u.id, name: u.name })}
                           >
-                            {u.is_active
-                              ? <><UserX className="w-3.5 h-3.5" /> Deactivate</>
-                              : <><UserCheck className="w-3.5 h-3.5" /> Activate</>
-                            }
+                            <Trash2 className="w-3.5 h-3.5" /> Delete
                           </button>
                         </div>
                       )
@@ -489,29 +501,30 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="label">Department</label>
+                      <label className="label">Department <span className="text-red-500">*</span></label>
                       <select
                         value={inviteDeptId}
-                        onChange={e => setInviteDeptId(e.target.value)}
-                        className="input"
+                        onChange={e => { setInviteDeptId(e.target.value); setInviteErrors(prev => ({ ...prev, dept: undefined })) }}
+                        className={`input ${inviteErrors.dept ? 'border-red-400 ring-1 ring-red-300' : ''}`}
                       >
-                        <option value="">No Department</option>
+                        <option value="">Select Department...</option>
                         {departments.map(d => (
                           <option key={d.id} value={d.id}>
                             {d.name}
                           </option>
                         ))}
                       </select>
+                      {inviteErrors.dept && <p className="text-xs text-red-500 mt-1">{inviteErrors.dept}</p>}
                     </div>
 
                     <div>
-                      <label className="label">Access Role</label>
+                      <label className="label">Access Role <span className="text-red-500">*</span></label>
                       <select
                         value={inviteRoleId}
-                        onChange={e => setInviteRoleId(e.target.value)}
-                        className="input"
+                        onChange={e => { setInviteRoleId(e.target.value); setInviteErrors(prev => ({ ...prev, role: undefined })) }}
+                        className={`input ${inviteErrors.role ? 'border-red-400 ring-1 ring-red-300' : ''}`}
                       >
-                        <option value="">No Role (Default Member)</option>
+                        <option value="">Select Role...</option>
                         {roles
                           .filter(r => {
                             const RANK: Record<string, number> = { superadmin: 3, manager: 2, member: 1 }
@@ -524,6 +537,7 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
                             </option>
                           ))}
                       </select>
+                      {inviteErrors.role && <p className="text-xs text-red-500 mt-1">{inviteErrors.role}</p>}
                     </div>
                   </div>
                 </div>
@@ -532,12 +546,44 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
                   <button type="button" onClick={closeInviteModal} className="btn-secondary text-sm">
                     Cancel
                   </button>
-                  <button type="submit" disabled={inviteUserMutation.isPending} className="btn-primary text-sm px-5 font-semibold">
+                  <button type="submit" disabled={inviteUserMutation.isPending || !inviteName.trim() || !inviteEmail.trim()} className="btn-primary text-sm px-5 font-semibold">
                     {inviteUserMutation.isPending ? 'Creating user...' : 'Create User'}
                   </button>
                 </div>
               </form>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirmation Modal ──────────────────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDeleteTarget(null)} />
+          <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden border border-gray-100">
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                  <AlertTriangle className="w-5 h-5 text-red-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete User</h3>
+              </div>
+              <p className="text-sm text-gray-600">
+                Are you sure you want to permanently delete <span className="font-semibold text-gray-900">{deleteTarget.name}</span>?
+                This action cannot be undone.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
+              <button className="btn-secondary text-sm" onClick={() => setDeleteTarget(null)}>Cancel</button>
+              <button
+                className="text-sm py-2 px-4 rounded-lg font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors flex items-center gap-1.5"
+                disabled={deleteUser.isPending}
+                onClick={() => deleteUser.mutate(deleteTarget.id)}
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deleteUser.isPending ? 'Deleting...' : 'Delete Permanently'}
+              </button>
+            </div>
           </div>
         </div>
       )}
