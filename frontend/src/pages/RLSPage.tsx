@@ -23,6 +23,76 @@ interface RLSFilter {
   is_package_rule?: boolean
 }
 
+interface GroupedRLSFilter {
+  id: string
+  connector_id: string
+  tables: string[]
+  filter_expression: string
+  target_type: 'role' | 'dept' | 'user'
+  role_ids: string[]
+  dept_ids: string[]
+  user_ids: string[]
+  is_active: boolean
+  is_package_rule: boolean
+  created_at: string
+  originalFilters: RLSFilter[]
+}
+
+const groupFilters = (filtersList: RLSFilter[]): GroupedRLSFilter[] => {
+  const groups: Record<string, GroupedRLSFilter> = {}
+
+  for (const filter of filtersList) {
+    let target_type: 'role' | 'dept' | 'user' = 'role'
+    if (filter.applies_to_dept_id) target_type = 'dept'
+    else if (filter.applies_to_user_id) target_type = 'user'
+
+    const is_package_rule = !!filter.is_package_rule
+    const key = `${filter.connector_id}::${filter.filter_expression}::${target_type}::${is_package_rule ? 'pkg' : 'custom'}`
+
+    if (!groups[key]) {
+      groups[key] = {
+        id: filter.id,
+        connector_id: filter.connector_id,
+        tables: [],
+        filter_expression: filter.filter_expression,
+        target_type,
+        role_ids: [],
+        dept_ids: [],
+        user_ids: [],
+        is_active: filter.is_active,
+        is_package_rule,
+        created_at: filter.created_at,
+        originalFilters: []
+      }
+    }
+
+    const g = groups[key]
+    g.originalFilters.push(filter)
+
+    if (!g.tables.includes(filter.table_name)) {
+      g.tables.push(filter.table_name)
+    }
+
+    if (target_type === 'role' && filter.applies_to_role_id && !g.role_ids.includes(filter.applies_to_role_id)) {
+      g.role_ids.push(filter.applies_to_role_id)
+    } else if (target_type === 'dept' && filter.applies_to_dept_id && !g.dept_ids.includes(filter.applies_to_dept_id)) {
+      g.dept_ids.push(filter.applies_to_dept_id)
+    } else if (target_type === 'user' && filter.applies_to_user_id && !g.user_ids.includes(filter.applies_to_user_id)) {
+      g.user_ids.push(filter.applies_to_user_id)
+    }
+
+    if (new Date(filter.created_at) < new Date(g.created_at)) {
+      g.created_at = filter.created_at
+    }
+  }
+
+  return Object.values(groups).map(g => {
+    g.tables.sort()
+    return g
+  })
+}
+
+
 interface Connector {
   id: string
   name: string
@@ -80,6 +150,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   // Modal State
   const [isOpen, setIsOpen] = useState(false)
   const [editingFilter, setEditingFilter] = useState<RLSFilter | null>(null)
+  const [editingGroup, setEditingGroup] = useState<GroupedRLSFilter | null>(null)
 
   // Form Fields
   const [connectorId, setConnectorId] = useState('')
@@ -281,57 +352,68 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   })
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      const firstRole = data.applies_to_role_ids && data.applies_to_role_ids.length > 0 ? data.applies_to_role_ids[0] : null
-      const firstDept = data.applies_to_dept_ids && data.applies_to_dept_ids.length > 0 ? data.applies_to_dept_ids[0] : null
-      
-      const updatePayload = {
-        connector_id: data.connector_id,
-        table_name: data.table_name,
-        filter_expression: data.filter_expression,
-        applies_to_role_id: firstRole,
-        applies_to_dept_id: firstDept,
-        applies_to_user_id: data.applies_to_user_id,
-        is_active: data.is_active,
+    mutationFn: async ({ originalFilterIds, data }: { originalFilterIds: string[]; data: any }) => {
+      // 1. Bulk delete the old filters
+      if (originalFilterIds.length > 0) {
+        await api.post('/api/rls/filters/bulk-delete', { ids: originalFilterIds })
       }
-      
-      const calls = [api.patch(`/api/rls/filters/${id}`, updatePayload)]
-      
-      if (data.applies_to_role_ids && data.applies_to_role_ids.length > 1) {
-        for (let i = 1; i < data.applies_to_role_ids.length; i++) {
-          calls.push(api.post('/api/rls/filters/', {
-            connector_id: data.connector_id,
-            table_name: data.table_name,
-            filter_expression: data.filter_expression,
-            applies_to_role_id: data.applies_to_role_ids[i],
-            applies_to_dept_id: null,
-            applies_to_user_id: null,
-          }))
+
+      // 2. Create the new filters
+      const calls: Promise<any>[] = []
+      for (const table of data.tables) {
+        if (data.applies_to_role_ids.length > 0) {
+          for (const roleId of data.applies_to_role_ids) {
+            calls.push(api.post('/api/rls/filters/', {
+              connector_id: data.connector_id,
+              table_name: table,
+              filter_expression: data.filter_expression,
+              applies_to_role_id: roleId,
+              applies_to_dept_id: null,
+              applies_to_user_id: null,
+            }))
+          }
         }
-      }
-      
-      if (data.applies_to_dept_ids && data.applies_to_dept_ids.length > 1) {
-        for (let i = 1; i < data.applies_to_dept_ids.length; i++) {
+        if (data.applies_to_dept_ids.length > 0) {
+          for (const deptId of data.applies_to_dept_ids) {
+            calls.push(api.post('/api/rls/filters/', {
+              connector_id: data.connector_id,
+              table_name: table,
+              filter_expression: data.filter_expression,
+              applies_to_role_id: null,
+              applies_to_dept_id: deptId,
+              applies_to_user_id: null,
+            }))
+          }
+        }
+        if (data.applies_to_user_id) {
           calls.push(api.post('/api/rls/filters/', {
             connector_id: data.connector_id,
-            table_name: data.table_name,
+            table_name: table,
             filter_expression: data.filter_expression,
             applies_to_role_id: null,
-            applies_to_dept_id: data.applies_to_dept_ids[i],
-            applies_to_user_id: null,
+            applies_to_dept_id: null,
+            applies_to_user_id: data.applies_to_user_id,
           }))
         }
       }
-      
-      return Promise.all(calls)
+
+      const results = await Promise.all(calls)
+
+      // 3. If they should be inactive, toggle them all to inactive
+      if (data.is_active === false && results.length > 0) {
+        const newFilterIds = results.map(r => r.data.id)
+        await Promise.all(newFilterIds.map(id => api.patch(`/api/rls/filters/${id}`, { is_active: false })))
+      }
+
+      return results
     },
     onSuccess: (results) => {
       qc.invalidateQueries({ queryKey: ['rlsFilters'] })
-      toast.success(`${results.length} RLS filter${results.length > 1 ? 's' : ''} updated successfully`)
+      toast.success('RLS policy updated successfully')
       closeModal()
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.detail || 'Failed to update filter')
+      toast.error(err.response?.data?.detail || 'Failed to update policy')
     },
   })
 
@@ -360,8 +442,9 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   })
 
   const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, is_active }: { id: string; is_active: boolean }) =>
-      api.patch(`/api/rls/filters/${id}`, { is_active }),
+    mutationFn: async ({ ids, is_active }: { ids: string[]; is_active: boolean }) => {
+      return Promise.all(ids.map(id => api.patch(`/api/rls/filters/${id}`, { is_active })))
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['rlsFilters'] })
       toast.success('Filter status updated')
@@ -374,6 +457,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   // Modal Helpers
   const openCreateModal = () => {
     setEditingFilter(null)
+    setEditingGroup(null)
     setConnectorId((embedded && externalConnectorId) ? externalConnectorId : connectors[0]?.id || '')
     setSelectedTables([])
     setTargetType('role')
@@ -387,43 +471,29 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
     setIsOpen(true)
   }
 
-  const openEditModal = (filter: RLSFilter) => {
-    setEditingFilter(filter)
-    setConnectorId(filter.connector_id)
-    setSelectedTables([filter.table_name])
-    setIsActive(filter.is_active)
-    setFilterExpression(filter.filter_expression)
+  const openEditModal = (group: GroupedRLSFilter) => {
+    setEditingGroup(group)
+    setEditingFilter(group.originalFilters[0])
+    setConnectorId(group.connector_id)
+    setSelectedTables(group.tables)
+    setIsActive(group.is_active)
+    setFilterExpression(group.filter_expression)
     setPreviewResult(null)
     setPreviewError(null)
 
-    if (filter.applies_to_role_id) {
-      setTargetType('role')
-      setAppliesToRoleIds([filter.applies_to_role_id])
+    setTargetType(group.target_type)
+    if (group.target_type === 'role') {
+      setAppliesToRoleIds(group.role_ids)
       setAppliesToDeptIds([])
       setAppliesToUserId(users[0]?.id || '')
-    } else if (filter.applies_to_dept_id) {
-      setTargetType('dept')
+    } else if (group.target_type === 'dept') {
       setAppliesToRoleIds([])
-      setAppliesToDeptIds([filter.applies_to_dept_id])
+      setAppliesToDeptIds(group.dept_ids)
       setAppliesToUserId(users[0]?.id || '')
     } else {
-      setTargetType('user')
       setAppliesToRoleIds([])
       setAppliesToDeptIds([])
-      setAppliesToUserId(filter.applies_to_user_id || '')
-    }
-
-    const siblings = filters.filter(
-      f => f.id !== filter.id &&
-           f.connector_id === filter.connector_id &&
-           f.table_name === filter.table_name &&
-           f.filter_expression === filter.filter_expression
-    )
-    if (siblings.length > 0) {
-      toast(`Editing this filter only. ${siblings.length} related filter${siblings.length > 1 ? 's' : ''} with the same expression exist for this table.`, {
-        icon: 'ℹ️',
-        duration: 5000,
-      })
+      setAppliesToUserId(group.user_ids[0] || '')
     }
 
     setIsOpen(true)
@@ -432,6 +502,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   const closeModal = () => {
     setIsOpen(false)
     setEditingFilter(null)
+    setEditingGroup(null)
   }
 
   // Helper to resolve columns for the selected table
@@ -569,10 +640,10 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
       return
     }
 
-    if (editingFilter) {
+    if (editingGroup) {
       const payload: any = {
         connector_id: connectorId,
-        table_name: selectedTables[0],
+        tables: selectedTables,
         filter_expression: filterExpression.trim(),
         applies_to_role_ids: targetType === 'role' ? appliesToRoleIds : [],
         applies_to_dept_ids: targetType === 'dept' ? appliesToDeptIds : [],
@@ -580,7 +651,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
         is_active: isActive,
       }
       updateMutation.mutate({
-        id: editingFilter.id,
+        originalFilterIds: editingGroup.originalFilters.map(f => f.id),
         data: payload
       })
     } else {
@@ -603,6 +674,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
   const displayedFilters = embedded && activeConnectorId
     ? filters.filter(f => f.connector_id === activeConnectorId)
     : filters
+  const displayedGroups = groupFilters(displayedFilters)
 
   // Helper displays
   const getConnectorName = (id: string) => connectors.find(c => c.id === id)?.name || id
@@ -709,7 +781,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
             <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-base font-bold text-gray-900">Active RLS Filter Policies</h2>
               <span className="text-xs bg-gray-100 text-gray-600 px-2.5 py-1 rounded-full font-semibold">
-                {displayedFilters.length} {displayedFilters.length === 1 ? 'Filter' : 'Filters'} Total
+                {displayedGroups.length} {displayedGroups.length === 1 ? 'Policy' : 'Policies'} Total
               </span>
             </div>
 
@@ -744,7 +816,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                 <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-3 text-gray-300" />
                 <p className="text-sm">Loading security filters...</p>
               </div>
-            ) : displayedFilters.length === 0 ? (
+            ) : displayedGroups.length === 0 ? (
               <div className="text-center py-16 px-4">
                 <Shield className="w-12 h-12 text-gray-300 mx-auto mb-4" />
                 <h3 className="text-sm font-semibold text-gray-900">No RLS filters configured</h3>
@@ -779,29 +851,31 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                         />
                       </th>
                       <th className="py-3.5 px-6">Connector</th>
-                      <th className="py-3.5 px-4">Table</th>
+                      <th className="py-3.5 px-4">Tables</th>
                       <th className="py-3.5 px-4">Applies To</th>
                       <th className="py-3.5 px-4">Status</th>
                       <th className="py-3.5 px-6 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 text-sm">
-                    {displayedFilters.map(f => {
-                      const isExpanded = !!expandedRows[f.id]
+                    {displayedGroups.map(g => {
+                      const isExpanded = !!expandedRows[g.id]
+                      const isDeletable = !g.is_package_rule
                       return (
-                        <React.Fragment key={f.id}>
+                        <React.Fragment key={g.id}>
                           <tr className="hover:bg-gray-50/50 transition-colors">
                             <td className="py-4 px-6 w-10">
-                              {!f.is_package_rule && (
+                              {isDeletable && (
                                 <input
                                   type="checkbox"
                                   className="rounded border-gray-300 text-accent-600 focus:ring-accent-500 cursor-pointer"
-                                  checked={selectedRlsIds.includes(f.id)}
+                                  checked={g.originalFilters.every(f => selectedRlsIds.includes(f.id))}
                                   onChange={(e) => {
+                                    const ids = g.originalFilters.map(f => f.id)
                                     if (e.target.checked) {
-                                      setSelectedRlsIds(prev => [...prev, f.id])
+                                      setSelectedRlsIds(prev => [...prev, ...ids.filter(id => !prev.includes(id))])
                                     } else {
-                                      setSelectedRlsIds(prev => prev.filter(id => id !== f.id))
+                                      setSelectedRlsIds(prev => prev.filter(id => !ids.includes(id)))
                                     }
                                   }}
                                 />
@@ -809,58 +883,71 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                             </td>
                             <td className="py-4 px-6 font-semibold text-gray-900">
                               <button
-                                onClick={() => toggleRow(f.id)}
+                                onClick={() => toggleRow(g.id)}
                                 className="flex items-center gap-2 text-left hover:text-brand-600 transition-colors"
                               >
                                 {isExpanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
-                                {getConnectorName(f.connector_id)}
+                                {getConnectorName(g.connector_id)}
                               </button>
                             </td>
-                            <td className="py-4 px-4 text-gray-600 font-mono text-xs">{f.table_name}</td>
-                            <td className="py-4 px-4">
-                              {f.applies_to_role_id && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-150">
-                                  Role: {getRoleName(f.applies_to_role_id)}
-                                </span>
-                              )}
-                              {f.applies_to_dept_id && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-50 text-purple-700 border border-purple-150">
-                                  Dept: {getDeptName(f.applies_to_dept_id)}
-                                </span>
-                              )}
-                              {f.applies_to_user_id && (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-150">
-                                  User: {getUserName(f.applies_to_user_id)}
-                                </span>
-                              )}
+                            <td className="py-4 px-4 text-gray-605">
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {g.tables.map(table => (
+                                  <span key={table} className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 border border-gray-200 font-mono text-[10px]">
+                                    {table}
+                                  </span>
+                                ))}
+                              </div>
                             </td>
                             <td className="py-4 px-4">
-                              {f.is_package_rule ? (
+                              <div className="flex flex-wrap gap-1 max-w-xs">
+                                {g.target_type === 'role' && g.role_ids.map(roleId => (
+                                  <span key={roleId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-150">
+                                    Role: {getRoleName(roleId)}
+                                  </span>
+                                ))}
+                                {g.target_type === 'dept' && g.dept_ids.map(deptId => (
+                                  <span key={deptId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-150">
+                                    Dept: {getDeptName(deptId)}
+                                  </span>
+                                ))}
+                                {g.target_type === 'user' && g.user_ids.map(userId => (
+                                  <span key={userId} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-150">
+                                    User: {getUserName(userId)}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                            <td className="py-4 px-4">
+                              {g.is_package_rule ? (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-800 border border-green-200">
                                   Active
                                 </span>
                               ) : (
                                 <button
-                                  onClick={() => toggleActiveMutation.mutate({ id: f.id, is_active: !f.is_active })}
+                                  onClick={() => {
+                                    const ids = g.originalFilters.map(f => f.id)
+                                    toggleActiveMutation.mutate({ ids, is_active: !g.is_active })
+                                  }}
                                   className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold transition-all ${
-                                    f.is_active
+                                    g.is_active
                                       ? 'bg-green-100 text-green-800 hover:bg-green-200'
                                       : 'bg-gray-150 text-gray-650 hover:bg-gray-200'
                                   }`}
                                 >
-                                  {f.is_active ? 'Active' : 'Inactive'}
+                                  {g.is_active ? 'Active' : 'Inactive'}
                                 </button>
                               )}
                             </td>
                             <td className="py-4 px-6 text-right">
-                              {f.is_package_rule ? (
+                              {g.is_package_rule ? (
                                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-755 border border-indigo-200" title="This RLS filter is inherited from an Access Package. Manage it in the Access Packages section.">
                                   Via Package
                                 </span>
                               ) : (
                                 <div className="flex items-center justify-end gap-2">
                                   <button
-                                    onClick={() => openEditModal(f)}
+                                    onClick={() => openEditModal(g)}
                                     className="p-1 rounded text-gray-500 hover:bg-gray-150 hover:text-gray-900 transition-colors"
                                     title="Edit RLS Filter"
                                   >
@@ -868,18 +955,19 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                                   </button>
                                   <button
                                     onClick={() => {
+                                      const ids = g.originalFilters.map(f => f.id)
                                       setConfirmModal({
                                         isOpen: true,
-                                        title: 'Delete RLS Filter',
-                                        message: 'Are you sure you want to delete this RLS filter? This action is irreversible.',
+                                        title: 'Delete RLS Filter Policy',
+                                        message: `Are you sure you want to delete this RLS policy? It applies to ${g.tables.length} table(s) and ${g.originalFilters.length} total filter rules. This action is irreversible.`,
                                         onConfirm: () => {
-                                          deleteMutation.mutate(f.id)
+                                          bulkDeleteRlsFilters.mutate(ids)
                                           setConfirmModal(prev => ({ ...prev, isOpen: false }))
                                         }
                                       })
                                     }}
                                     className="p-1 rounded text-red-500 hover:bg-red-50 hover:text-red-750 transition-colors"
-                                    title="Delete RLS Filter"
+                                    title="Delete RLS Filter Policy"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -894,12 +982,12 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                                   <div>
                                     <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Filter Expression</p>
                                     <pre className="bg-gray-900 text-gray-100 p-3.5 rounded-lg text-xs font-mono whitespace-pre-wrap shadow-inner overflow-x-auto">
-                                      {f.filter_expression}
+                                      {g.filter_expression}
                                     </pre>
                                   </div>
                                   <div className="flex items-center justify-between text-xs text-gray-400">
-                                    <span>Filter ID: <code className="font-mono text-[10px]">{f.id}</code></span>
-                                    <span>Created At: {new Date(f.created_at).toLocaleString()}</span>
+                                    <span>Filter Count: <strong className="font-semibold text-gray-600">{g.originalFilters.length}</strong></span>
+                                    <span>Earliest Created: {new Date(g.created_at).toLocaleString()}</span>
                                   </div>
                                 </div>
                               </td>
@@ -1013,7 +1101,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
               <h3 className="text-lg font-bold text-gray-900">
-                {editingFilter ? 'Edit Row-Level Security Filter' : 'Create Row-Level Security Filter'}
+                {editingGroup ? 'Edit Row-Level Security Filter' : 'Create Row-Level Security Filter'}
               </h3>
               <button onClick={closeModal} className="p-1 rounded-md hover:bg-gray-100 transition-colors">
                 <X className="w-5 h-5 text-gray-400" />
@@ -1052,7 +1140,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
                     allTables={allConnectorTables}
                     selectedTables={selectedTables}
                     onChange={setSelectedTables}
-                    singleSelect={editingFilter !== null}
+                    singleSelect={false}
                     placeholder="Select table(s)..."
                   />
                 </div>
@@ -1223,7 +1311,7 @@ export function RLSPage({ embedded = false, connectorId: externalConnectorId }: 
               </div>
 
               {/* Active Checkbox (Edit only) */}
-              {editingFilter && (
+              {editingGroup && (
                 <div className="flex items-center gap-2">
                   <input
                     type="checkbox"
