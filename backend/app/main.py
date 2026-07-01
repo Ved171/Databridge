@@ -7,7 +7,8 @@ from app.core.config import settings
 from app.core.database import engine, Base
 from app.api.routes import (
     auth, workspaces, connectors, permissions, query, users,
-    dashboard, departments, notifications, packages, rls, roles, scoped_admin
+    dashboard, departments, notifications, packages, rls, roles, scoped_admin,
+    oauth
 )
 
 logger = structlog.get_logger()
@@ -44,7 +45,9 @@ app.add_middleware(
         "http://localhost:5178",
         "http://127.0.0.1:5178",
         "http://192.168.3.83:5173",
-        "http://192.168.2.149:5178"
+        "http://192.168.2.149:5178",
+        "https://chat.synovergetech.com:8091",
+        "https://chat.synovergetech.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -64,6 +67,7 @@ app.include_router(roles.router,       prefix="/api/roles",       tags=["Roles"]
 app.include_router(rls.router,         prefix="/api/rls",         tags=["RLS"])
 app.include_router(packages.router,    prefix="/api/packages",    tags=["Packages"])
 app.include_router(dashboard.router,   prefix="/api/dashboard",   tags=["Dashboard"])
+app.include_router(oauth.router,       prefix="",                 tags=["OAuth"])
 
 
 @app.get("/health")

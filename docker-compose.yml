@@ -42,6 +42,8 @@ services:
       LITELLM_BASE_URL: ${LITELLM_BASE_URL:-}
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     depends_on:
@@ -85,6 +87,8 @@ services:
       LITELLM_BASE_URL: ${LITELLM_BASE_URL:-}
       LITELLM_API_KEY: ${LITELLM_API_KEY:-}
       ENVIRONMENT: ${ENVIRONMENT:-development}
+    env_file:
+      - .env
     ports:
       - "9000:9000"
     depends_on:

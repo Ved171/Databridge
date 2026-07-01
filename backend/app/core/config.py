@@ -23,6 +23,12 @@ class Settings(BaseSettings):
     SQLITE_UPLOAD_DIR: str = os.environ.get("SQLITE_UPLOAD_DIR", "/data/sqlite")
     SQLITE_MAX_UPLOAD_MB: int = 500
 
+    # OAuth 2.1 Proxy (for MCP authentication via OpenWebUI)
+    OAUTH_CLIENT_ID: str = "databridge-mcp-client"
+    OAUTH_CLIENT_SECRET: str = "change-me-oauth-secret"
+    MCP_BASE_URL: str = "http://localhost:9000"
+    BACKEND_BASE_URL: str = "http://localhost:8000"
+
     class Config:
         env_file = ".env"
         extra = "ignore"

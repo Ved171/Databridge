@@ -5,20 +5,80 @@ DataBridge FastMCP Server -- 9 tools across read/write/federated categories.
 """
 import logging
 from fastmcp import FastMCP
+from fastmcp.server.auth import OAuthProxy
 from fastmcp.server.auth.providers.jwt import JWTVerifier
 
 from app.core.config import settings
 from app.tools.mcp_tools import register_mcp_tools
 
+# Monkeypatch validate_issuer_url to allow HTTP URLs for non-localhost in development
+try:
+    import mcp.server.auth.routes
+    mcp.server.auth.routes.validate_issuer_url = lambda url: None
+except ImportError:
+    pass
+
 logger = logging.getLogger(__name__)
 
-auth = JWTVerifier(
+# The token verifier validates upstream DataBridge JWTs issued by /oauth/token.
+# These are the same HS256 tokens the rest of the FastAPI backend uses.
+_token_verifier = JWTVerifier(
     public_key=settings.SECRET_KEY,
     algorithm=settings.ALGORITHM,
 )
 
+# OAuthProxy bridges MCP clients (OpenWebUI) to DataBridge's own OAuth endpoints.
+# It simulates DCR for MCP clients, forwards authorization to our login page,
+# and exchanges codes for tokens at our /oauth/token endpoint.
+from starlette.responses import RedirectResponse
+from fastapi import Request
+
+class CustomOAuthProxy(OAuthProxy):
+    async def _handle_idp_callback(self, request: Request):
+        response = await super()._handle_idp_callback(request)
+        if isinstance(response, RedirectResponse):
+            location = response.headers.get("location", "")
+            if "https://chat.synovergetech.com/oauth/clients/" in location:
+                new_location = location.replace(
+                    "https://chat.synovergetech.com/oauth/clients/",
+                    "https://chat.synovergetech.com:8091/oauth/clients/"
+                )
+                response.headers["location"] = new_location
+        return response
+
+auth = CustomOAuthProxy(
+    # DataBridge's own OAuth endpoints
+    upstream_authorization_endpoint=f"{settings.BACKEND_BASE_URL}/oauth/authorize",
+    upstream_token_endpoint=f"{settings.BACKEND_BASE_URL}/oauth/token",
+
+    # Fixed credentials returned to MCP clients during DCR registration
+    upstream_client_id=settings.OAUTH_CLIENT_ID,
+    upstream_client_secret=settings.OAUTH_CLIENT_SECRET,
+
+    # Validates upstream DataBridge JWTs
+    token_verifier=_token_verifier,
+
+    base_url=settings.MCP_BASE_URL,
+
+    # Forward PKCE to our /oauth/token endpoint
+    forward_pkce=True,
+
+    # Skip built-in consent page — our /oauth/authorize login page serves
+    # as both authentication and implicit consent
+    require_authorization_consent="external",
+
+    # Restrict redirects to OpenWebUI and localhost (dev)
+    allowed_client_redirect_uris=[
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "https://chat.synovergetech.com:8091/*",
+        "https://chat.synovergetech.com/*",
+    ],
+)
+
 mcp = FastMCP(
     "DataBridge",
+    auth=auth,
     instructions=(
         "## ⚠ CRITICAL: READ AND FOLLOW THESE INSTRUCTIONS CAREFULLY\n"
         "You MUST read and follow ALL instructions in this prompt. Do not skip or ignore any guidance.\n"
@@ -49,6 +109,9 @@ mcp = FastMCP(
 
         "## RULE 4 — CONFIRM BEFORE DELETE\n"
         "Always ask the user for explicit confirmation before executing any DELETE operation.\n\n"
+
+        "## RULE 5 — ALWAYS RESOLVE CURRENT EMPLOYEE VIA /me API\n"
+        "Never assume the identity of the current user (e.g. from file paths, OS usernames, or git configurations). Always look at the Authorization token configured in the MCP headers or call `/api/auth/me` to get the authenticated user's `email`, `employee_code`, and `name`.\n\n"
 
         "---\n\n"
 
@@ -207,4 +270,4 @@ mcp = FastMCP(
 register_mcp_tools(mcp)
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=9000)
+    mcp.run(transport="http", host="0.0.0.0", port=9000, path="/")

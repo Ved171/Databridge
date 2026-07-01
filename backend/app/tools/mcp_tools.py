@@ -93,15 +93,14 @@ async def _get_accessible_connectors_with_schema(db, user) -> list[dict]:
 async def _build_ctx_and_run(mcp_ctx: Context, coro_factory):
     """Auth check + ToolContext builder shared across all tools."""
     try:
-        request = mcp_ctx.request_context.request
-        auth_header: str = request.headers.get("authorization", "")
-    except Exception:
-        return "Error: Unable to read request headers."
-
-    if not auth_header.lower().startswith("bearer "):
-        return "Error: Missing Authorization header."
-
-    token = auth_header[7:]
+        from fastmcp.server.dependencies import get_access_token
+        access_token = get_access_token()
+        if not access_token:
+            return "Error: Missing or invalid authentication. Please configure/login to OAuth."
+        token = access_token.token
+    except Exception as e:
+        logger.error("Authentication extraction failed: %s", e)
+        return "Error: Unable to extract authentication token."
     try:
         async with AsyncSessionLocal() as db:
             try:

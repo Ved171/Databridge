@@ -585,14 +585,23 @@ export function PermissionsPage({
   }, [connectorGrants])
 
   // Task 6: Debounce handleTickChange with 300ms delay
+  // Auto-revoke: if all permission flags become false after the change, revoke instead of upsert
   const tickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const handleTickChange = (userId: string, field: string, value: boolean) => {
     if (tickTimerRef.current) clearTimeout(tickTimerRef.current)
     tickTimerRef.current = setTimeout(() => {
       const perm = permMap[userId]
       const activePerm = perm && perm.is_active ? perm : null
-      const existing = activePerm || { can_create: false, can_read: true, can_update: false, can_delete: false }
-      upsertPerm.mutate({ user_id: userId, ...existing, [field]: value })
+      const existing = activePerm || { can_create: false, can_read: true, can_update: false, can_delete: false, allow_share_access: false }
+      const updated = { ...existing, [field]: value }
+
+      // If every permission flag is false, revoke access automatically
+      const allFalse = !updated.can_read && !updated.can_create && !updated.can_update && !updated.can_delete && !updated.allow_share_access
+      if (allFalse && activePerm) {
+        revokeUserPerm.mutate(activePerm.id)
+      } else {
+        upsertPerm.mutate({ user_id: userId, ...updated })
+      }
     }, 300)
   }
 
