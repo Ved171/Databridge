@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     MCP_BASE_URL: str = "http://localhost:9000"
     BACKEND_BASE_URL: str = "http://localhost:8000"
 
+    # Microsoft SSO (Entra ID / Azure AD)
+    MICROSOFT_CLIENT_ID: Optional[str] = None
+    MICROSOFT_CLIENT_SECRET: Optional[str] = None
+    MICROSOFT_TENANT_ID: str = "common"
+
     class Config:
         env_file = ".env"
         extra = "ignore"

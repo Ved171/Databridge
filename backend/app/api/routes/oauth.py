@@ -1,6 +1,6 @@
 """
 app/api/routes/oauth.py
-───────────────────────
+
 OAuth 2.1 Authorization Server endpoints for DataBridge.
 
 These endpoints allow MCP clients (e.g., OpenWebUI) to authenticate via the
@@ -10,9 +10,9 @@ authorization code for a DataBridge JWT.
 
 Endpoints
 ---------
-GET  /oauth/authorize   → show login form (browser redirect from OAuthProxy)
-POST /oauth/authorize   → validate credentials, issue auth code, redirect back
-POST /oauth/token       → exchange auth code for DataBridge access token
+GET  /oauth/authorize    show login form (browser redirect from OAuthProxy)
+POST /oauth/authorize    validate credentials, issue auth code, redirect back
+POST /oauth/token        exchange auth code for DataBridge access token
 """
 from __future__ import annotations
 
@@ -23,10 +23,12 @@ import logging
 import secrets
 from urllib.parse import urlencode
 
+import httpx
 from fastapi import APIRouter, Depends, Request, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from passlib.context import CryptContext
 
 import redis.asyncio as aioredis
 
@@ -39,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-# ── Redis helpers ─────────────────────────────────────────────────────────────
+#  Redis helpers 
 _redis_client: aioredis.Redis | None = None
 AUTH_CODE_TTL = 300  # 5 minutes
 AUTH_CODE_PREFIX = "oauth:code:"
@@ -52,7 +54,7 @@ async def _get_redis() -> aioredis.Redis:
     return _redis_client
 
 
-# ── Login page HTML ──────────────────────────────────────────────────────────
+#  Login page HTML 
 def _render_login_page(
     *,
     client_id: str = "",
@@ -81,7 +83,7 @@ def _render_login_page(
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>DataBridge — Sign In</title>
+    <title>DataBridge -- Sign In</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -232,7 +234,7 @@ def _render_login_page(
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" name="password" placeholder="••••••••" required />
+                <input type="password" id="password" name="password" placeholder="" required />
             </div>
 
             <input type="hidden" name="client_id" value="{client_id}" />
@@ -252,7 +254,7 @@ def _render_login_page(
     return HTMLResponse(content=html)
 
 
-# ── GET /oauth/authorize ─────────────────────────────────────────────────────
+#  GET /oauth/authorize 
 @router.get("/oauth/authorize")
 async def authorize_get(
     request: Request,
@@ -265,12 +267,7 @@ async def authorize_get(
     code_challenge_method: str = "",
 ):
     """
-    Renders the DataBridge login page.
-
-    The OAuthProxy redirects the user's browser here.  After the user submits
-    valid credentials (handled by the POST endpoint below), an authorization
-    code is generated and the user is redirected back to the OAuthProxy
-    callback URI.
+    Renders the DataBridge login page for local credential authentication.
     """
     if response_type != "code":
         return JSONResponse(
@@ -288,91 +285,17 @@ async def authorize_get(
     )
 
 
-# ── POST /oauth/authorize ────────────────────────────────────────────────────
-@router.post("/oauth/authorize")
-async def authorize_post(
-    request: Request,
-    email: str = Form(...),
-    password: str = Form(...),
-    client_id: str = Form(""),
-    redirect_uri: str = Form(""),
-    state: str = Form(""),
-    scope: str = Form(""),
-    code_challenge: str = Form(""),
-    code_challenge_method: str = Form(""),
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Validates the user's credentials and, on success, issues a short-lived
-    authorization code stored in Redis.  Redirects to *redirect_uri* with
-    ``?code=...&state=...``.
-    """
-    # ── validate credentials ──────────────────────────────────────────────
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-
-    if not user or not verify_password(password, user.hashed_password):
-        return _render_login_page(
-            client_id=client_id,
-            redirect_uri=redirect_uri,
-            state=state,
-            scope=scope,
-            code_challenge=code_challenge,
-            code_challenge_method=code_challenge_method,
-            error="Invalid email or password.",
-        )
-
-    if not user.is_active:
-        return _render_login_page(
-            client_id=client_id,
-            redirect_uri=redirect_uri,
-            state=state,
-            scope=scope,
-            code_challenge=code_challenge,
-            code_challenge_method=code_challenge_method,
-            error="This account has been deactivated.",
-        )
-
-    # ── generate authorization code ───────────────────────────────────────
-    code = secrets.token_urlsafe(48)
-
-    code_data = json.dumps({
-        "user_id": str(user.id),
-        "client_id": client_id,
-        "redirect_uri": redirect_uri,
-        "scope": scope,
-        "code_challenge": code_challenge,
-        "code_challenge_method": code_challenge_method,
-    })
-
-    r = await _get_redis()
-    await r.setex(f"{AUTH_CODE_PREFIX}{code}", AUTH_CODE_TTL, code_data)
-
-    logger.info("OAuth code issued for user=%s client=%s", user.email, client_id)
-
-    # ── redirect back to caller (OAuthProxy callback) ─────────────────────
-    params: dict[str, str] = {"code": code}
-    if state:
-        params["state"] = state
-
-    separator = "&" if "?" in redirect_uri else "?"
-    return RedirectResponse(
-        url=f"{redirect_uri}{separator}{urlencode(params)}",
-        status_code=302,
-    )
-
-
-# ── POST /oauth/token ────────────────────────────────────────────────────────
+#  POST /oauth/token 
 @router.post("/oauth/token")
 async def token_exchange(request: Request):
     """
-    OAuth Token endpoint — exchanges an authorization code for an access token.
+    OAuth Token endpoint -- exchanges an authorization code for an access token.
 
     The OAuthProxy calls this endpoint server-side after receiving the auth
     code at its callback.  We validate the code (and PKCE if present), then
     issue a standard DataBridge HS256 JWT.
     """
-    # ── parse request body (form or JSON) ─────────────────────────────────
+    #  parse request body (form or JSON) 
     content_type = request.headers.get("content-type", "")
     if "application/x-www-form-urlencoded" in content_type:
         form = await request.form()
@@ -399,7 +322,7 @@ async def token_exchange(request: Request):
             status_code=400,
         )
 
-    # ── retrieve and consume the code (single-use) ────────────────────────
+    #  retrieve and consume the code (single-use) 
     r = await _get_redis()
     code_key = f"{AUTH_CODE_PREFIX}{code}"
     code_json = await r.get(code_key)
@@ -413,14 +336,14 @@ async def token_exchange(request: Request):
     await r.delete(code_key)  # single-use
     code_data: dict = json.loads(code_json)
 
-    # ── validate redirect_uri ─────────────────────────────────────────────
+    #  validate redirect_uri 
     if redirect_uri and code_data["redirect_uri"] and redirect_uri != code_data["redirect_uri"]:
         return JSONResponse(
             {"error": "invalid_grant", "error_description": "redirect_uri mismatch"},
             status_code=400,
         )
 
-    # ── validate PKCE ─────────────────────────────────────────────────────
+    #  validate PKCE 
     stored_challenge = code_data.get("code_challenge", "")
     stored_method = code_data.get("code_challenge_method", "")
 
@@ -451,7 +374,7 @@ async def token_exchange(request: Request):
                     status_code=400,
                 )
 
-    # ── issue DataBridge JWT ──────────────────────────────────────────────
+    #  issue DataBridge JWT 
     user_id = code_data["user_id"]
 
     async with AsyncSessionLocal() as db:

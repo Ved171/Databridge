@@ -7,7 +7,7 @@ from app.models import User
 
 logger = logging.getLogger("query_runner")
 
-# ── Module-level cache for rls_enabled setting ───────────────────────────────
+#  Module-level cache for rls_enabled setting 
 _rls_enabled_cache: dict = {"value": True, "fetched_at": 0.0}
 _RLS_CACHE_TTL = 30  # seconds
 
@@ -29,7 +29,7 @@ async def _is_rls_enabled(db: AsyncSession) -> bool:
         row = result.scalar_one_or_none()
         enabled = row != "false" if row is not None else True
     except Exception:
-        # Table might not exist yet — default to enabled
+        # Table might not exist yet -- default to enabled
         enabled = True
 
     _rls_enabled_cache["value"] = enabled
@@ -47,16 +47,16 @@ async def apply_rls_to_query(
 ) -> str:
     """
     Injects RLS WHERE clauses directly into the query's matching SELECT nodes.
-    Only applies to SELECT statements — writes pass through unchanged.
+    Only applies to SELECT statements -- writes pass through unchanged.
     """
     if not raw_query.strip().upper().startswith('SELECT'):
         return raw_query
 
-    # GAP 4: Global RLS kill switch — if disabled, skip all filtering
+    # GAP 4: Global RLS kill switch -- if disabled, skip all filtering
     if not await _is_rls_enabled(db):
         return raw_query
 
-    # GAP 1: Superadmin bypass — never apply RLS filters to superadmins
+    # GAP 1: Superadmin bypass -- never apply RLS filters to superadmins
     if user.is_superadmin:
         return raw_query
 

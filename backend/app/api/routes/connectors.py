@@ -330,7 +330,7 @@ async def get_schema(
     return ConnectorSchemaOut(connector_id=connector_id, tables=allowed_tables)
 
 
-# â”€â”€â”€ SQLite File Upload Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  SQLite File Upload Helpers 
 
 ALLOWED_SQLITE_EXTENSIONS = {".db", ".sqlite", ".sqlite3"}
 
@@ -388,7 +388,7 @@ async def _save_sqlite_file(file: UploadFile) -> str:
     return dest_path
 
 
-# â”€â”€â”€ SQLite Upload Endpoints â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+#  SQLite Upload Endpoints 
 
 @router.post("/upload-sqlite", response_model=ConnectorOut)
 async def create_sqlite_connector_via_upload(

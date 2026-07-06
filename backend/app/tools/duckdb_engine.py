@@ -1,6 +1,6 @@
 """
 app/tools/duckdb_engine.py
-──────────────────────────
+
 DuckDB-powered in-memory federation engine for cross-database queries.
 
 Responsibilities:
@@ -10,9 +10,9 @@ Responsibilities:
   4. Return a single unified QueryResult
 
 Uses sqlglot to:
-  • Validate & normalise federation SQL before DuckDB execution
-  • Transpile dialect-specific SQL between connectors
-  • Parse SQL ASTs for injection detection
+   Validate & normalise federation SQL before DuckDB execution
+   Transpile dialect-specific SQL between connectors
+   Parse SQL ASTs for injection detection
 """
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ from app.connectors.base import QueryResult
 
 logger = logging.getLogger(__name__)
 
-# ── Dialect mapping: connector_type -> sqlglot dialect name ───────────────────
+#  Dialect mapping: connector_type -> sqlglot dialect name 
 SQLGLOT_DIALECT_MAP: Dict[str, str] = {
     "postgres":    "postgres",
     "postgresql":  "postgres",
@@ -44,16 +44,16 @@ SQLGLOT_DIALECT_MAP: Dict[str, str] = {
     # NoSQL / non-SQL connectors are intentionally absent -- they bypass validation
 }
 
-# ── Dangerous statement types blocked via AST check ──────────────────────────
+#  Dangerous statement types blocked via AST check 
 _BLOCKED_STATEMENT_TYPES = {
     "Drop", "TruncateTable", "AlterTable", "AlterColumn",
     "Grant", "Revoke", "Use", "Kill",
 }
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Cross-database join link registry
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Key: "source_db.source_table.source_column" (lowercased)
 # Val: {"target_db": ..., "target_table": ..., "target_column": ...}
 
@@ -91,9 +91,9 @@ def load_cross_db_links_from_schema(schema_json: dict) -> None:
 
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Public helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 def translate_query(sql: str, from_dialect: str, to_dialect: str) -> str:
     """
@@ -153,9 +153,9 @@ def sql_fingerprint(sql: str) -> str:
     return hashlib.sha256(normalised.encode()).hexdigest()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Federation engine
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 class DuckDBFederationEngine:
     """
@@ -366,7 +366,7 @@ class DuckDBFederationEngine:
                     pass
             cursor.close()
 
-    # ── Convenience: run ad-hoc SQL over a single in-memory table ────────────
+    #  Convenience: run ad-hoc SQL over a single in-memory table 
 
     def run_inline(self, qr: QueryResult, sql: str) -> QueryResult:
         """
@@ -388,9 +388,9 @@ def make_table_alias(name: str) -> str:
     return alias or "table_0"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Column / table casing normalization
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 def normalize_query_casings(
     sql: str,
@@ -403,7 +403,7 @@ def normalize_query_casings(
     them to use the exact casing stored in the database.
 
     This prevents quoted-identifier failures on case-sensitive databases
-    like PostgreSQL where '"EmployeeId"' ≠ '"employeeid"'.
+    like PostgreSQL where '"EmployeeId"'  '"employeeid"'.
 
     Falls back to the original SQL on any error so callers are never blocked.
     """
@@ -415,7 +415,7 @@ def normalize_query_casings(
 
         tree = sqlglot.parse_one(sql, read=dialect)
 
-        # ── Phase 1: Map table aliases to cached table definitions ────────
+        #  Phase 1: Map table aliases to cached table definitions 
         alias_to_cached: Dict[str, dict] = {}
 
         for table in tree.find_all(exp.Table):
@@ -461,7 +461,7 @@ def normalize_query_casings(
             if t_db:
                 alias_to_cached[f"{t_db}.{t_name}"] = matched
 
-        # ── Phase 2: Rewrite column identifier casing ─────────────────────
+        #  Phase 2: Rewrite column identifier casing 
         for col in tree.find_all(exp.Column):
             col_lower = col.name.lower()
             col_table = col.table.lower() if col.table else ""

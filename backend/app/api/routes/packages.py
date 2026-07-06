@@ -289,7 +289,7 @@ async def assign_package(
     if not pkg:
         raise HTTPException(status_code=404, detail="Access package not found.")
 
-    # Department assignments (unscoped — all roles in dept)
+    # Department assignments (unscoped -- all roles in dept)
     for dept_id_str in payload.department_ids:
         dept_uuid = uuid.UUID(dept_id_str)
         stmt = select(PackageDepartmentAssignment).where(

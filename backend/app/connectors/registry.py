@@ -13,7 +13,7 @@ from app.connectors.oracle import OracleConnector
 from app.connectors.salesforce import SalesforceConnector
 from app.models import ConnectorType
 
-# ─── Plugin Registry ──────────────────────────────────────────────────────────
+#  Plugin Registry 
 # To add a new connector type:
 # 1. Create a new file in app/connectors/
 # 2. Implement BaseConnector

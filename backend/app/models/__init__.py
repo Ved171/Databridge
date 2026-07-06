@@ -16,7 +16,7 @@ def gen_uuid():
     return str(uuid.uuid4())
 
 
-# ─── Enums ────────────────────────────────────────────────────────────────────
+#  Enums 
 
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
@@ -53,7 +53,7 @@ class PermissionLevel(str, enum.Enum):
     DELETE = "delete"
 
 
-# ─── Models ───────────────────────────────────────────────────────────────────
+#  Models 
 
 class User(Base):
     __tablename__ = "users"

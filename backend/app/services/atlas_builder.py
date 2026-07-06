@@ -1,6 +1,6 @@
 """
 app/services/atlas_builder.py
-─────────────────────────────
+
 Build per-connector atlas files (Iceberg-style) from the full schema.
 
 Instead of one giant 1.4MB databridge_schema_summary.json that loads

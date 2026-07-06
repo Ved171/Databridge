@@ -5,7 +5,7 @@ from app.models import UserRole, ConnectorType
 
 
 
-# ─── Auth ─────────────────────────────────────────────────────────────────────
+#  Auth 
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -21,7 +21,7 @@ class RegisterRequest(BaseModel):
     password: str
 
 
-# ─── User ─────────────────────────────────────────────────────────────────────
+#  User 
 
 class CreateUserRequest(BaseModel):
     name: str
@@ -72,7 +72,7 @@ class UserOut(BaseModel):
         return str(val)
 
 
-# ─── Workspace ────────────────────────────────────────────────────────────────
+#  Workspace 
 
 class WorkspaceCreate(BaseModel):
     name: str
@@ -92,7 +92,7 @@ class AddMemberRequest(BaseModel):
     role: UserRole = UserRole.MEMBER
 
 
-# ─── Connector ────────────────────────────────────────────────────────────────
+#  Connector 
 
 class ConnectorCreate(BaseModel):
     workspace_id: Optional[str] = None
@@ -126,7 +126,7 @@ class ConnectorSchemaOut(BaseModel):
     tables: List[Dict[str, Any]]
 
 
-# ─── Permissions ──────────────────────────────────────────────────────────────
+#  Permissions 
 
 class PermissionUpsert(BaseModel):
     user_id: str
@@ -419,7 +419,7 @@ class TablePermissionOut(BaseModel):
 
 
 
-# ─── Query ────────────────────────────────────────────────────────────────────
+#  Query 
 
 class NLQueryRequest(BaseModel):
     connector_id: Optional[str] = None
@@ -453,7 +453,7 @@ class QueryLogOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-# ─── Department ───────────────────────────────────────────────────────────────
+#  Department 
 
 class DepartmentCreate(BaseModel):
     name: str
@@ -487,7 +487,7 @@ class DepartmentOut(BaseModel):
         return str(val)
 
 
-# ─── Role ─────────────────────────────────────────────────────────────────────
+#  Role 
 
 class RoleCreate(BaseModel):
     name: str
@@ -536,7 +536,7 @@ class RoleTreeNode(BaseModel):
         return str(val)
 
 
-# ─── RLS Filters ─────────────────────────────────────────────────────────────
+#  RLS Filters 
 
 class RLSFilterCreate(BaseModel):
     connector_id:       str
@@ -583,7 +583,7 @@ class RLSFilterOut(BaseModel):
 
 
 class RLSContextOut(BaseModel):
-    """What the debug endpoint returns — shows resolved placeholder values."""
+    """What the debug endpoint returns -- shows resolved placeholder values."""
     user_id:                  str
     user_email:               str
     user_employee_code:       Optional[str] = None
@@ -593,7 +593,7 @@ class RLSContextOut(BaseModel):
     is_manager:               bool
 
 
-# ─── Access Packages ─────────────────────────────────────────────────────────
+#  Access Packages 
 
 class PackageConnectorRuleIn(BaseModel):
     connector_id: str

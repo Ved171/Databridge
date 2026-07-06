@@ -1,6 +1,6 @@
 """
 app/tools/db_tools.py
-─────────────────────────────────────────────────────────────────────────────
+
 Central source-of-truth for ALL DataBridge tool functions.
 """
 from __future__ import annotations
@@ -35,9 +35,9 @@ from app.tools.duckdb_engine import (
 logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool context
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 @dataclass
 class ToolContext:
@@ -45,9 +45,9 @@ class ToolContext:
     db: AsyncSession
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Redis-backed TTL Query Cache
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 import redis.asyncio as aioredis
 import pickle
@@ -155,9 +155,9 @@ class _QueryCache:
 _cache = _QueryCache()
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Helpers
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def _get_active_connector(ctx: ToolContext, db_id: str) -> Optional[Connector]:
     result = await ctx.db.execute(select(Connector).where(Connector.id == db_id))
@@ -233,7 +233,7 @@ async def _execute_on_connector_raw(connector: Connector, query: str) -> QueryRe
     return res
 
 
-# ── Dangerous SQL patterns blocked before execution ──────────────────────────
+#  Dangerous SQL patterns blocked before execution 
 # These bypass our table-level permission checks because sqlglot cannot extract
 # table names from dynamic SQL inside EXEC/sp_executesql string parameters.
 _BLOCKED_SQL_PATTERNS = re.compile(
@@ -287,9 +287,9 @@ def _safe_val(v) -> str:
     return f"'{escaped}'"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Atlas overlay helper
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 def _overlay_atlas_knowledge(tables: List[dict], connector_id: str) -> List[dict]:
     """
@@ -333,9 +333,9 @@ def _overlay_atlas_knowledge(tables: List[dict], connector_id: str) -> List[dict
         return tables
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: List Databases
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 def _get_query_format_hint(db_type: str) -> str:
     hints = {
@@ -389,9 +389,9 @@ async def tool_list_available_databases(ctx: ToolContext) -> str:
     return "\n".join(output) if found else "No databases accessible with your permissions."
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Get Schema  (live schema + atlas overlay)
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_get_database_schema(
     ctx: ToolContext,
@@ -440,9 +440,9 @@ async def tool_get_database_schema(
     return build_rich_schema_prompt(tables=tables, connector_type=str(connector.type))
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Global Schema Awareness  (atlas-first)
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_get_global_schema_awareness(ctx: ToolContext) -> str:
     from app.services.atlas_builder import get_atlas_builder
@@ -577,9 +577,9 @@ async def _check_query_table_permissions(
     return None
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Execute Query (READ + WRITE)
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
     connector = await _get_active_connector(ctx, db_id)
@@ -624,7 +624,7 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
             except Exception:
                 pass
         elif op == "read":
-            # SQL RLS injection — pass each schema-qualified table once
+            # SQL RLS injection -- pass each schema-qualified table once
             tables_in_cache = (connector.schema_cache or {}).get("tables", [])
             applied_tables = set()
             for table in tables_in_cache:
@@ -689,9 +689,9 @@ async def tool_execute_query(ctx: ToolContext, db_id: str, query: str) -> str:
         return f"Error executing query on '{connector.name}': {str(e)}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Create Record
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_create_record(
     ctx: ToolContext,
@@ -749,9 +749,9 @@ async def tool_create_record(
         return f"Error creating record in '{connector.name}'.{table_or_collection}: {str(e)}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Update Record
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_update_record(
     ctx: ToolContext,
@@ -809,9 +809,9 @@ async def tool_update_record(
         return f"Error updating record in '{connector.name}'.{table_or_collection}: {str(e)}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Delete Record
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_delete_record(
     ctx: ToolContext,
@@ -867,9 +867,9 @@ async def tool_delete_record(
         return f"Error deleting record from '{connector.name}'.{table_or_collection}: {str(e)}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # AST Pushdown Planner
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 def apply_pushdown_optimizations(
     queries: List[Dict[str, str]],
@@ -997,9 +997,9 @@ def apply_pushdown_optimizations(
     return optimized_queries, pushdowns_applied
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Execute Federated Query (DuckDB)
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_execute_federated_query(
     ctx: ToolContext,
@@ -1211,9 +1211,9 @@ async def tool_execute_federated_query(
     return response_json_str
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Mirror Table
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_mirror_table(
     ctx: ToolContext,
@@ -1250,9 +1250,9 @@ async def tool_mirror_table(
         return f"Error mirroring table '{table_name}': {str(e)}"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 # Tool: Record Discovery
-# ─────────────────────────────────────────────────────────────────────────────
+# 
 
 async def tool_record_discovery(
     ctx: ToolContext,

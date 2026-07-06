@@ -19,7 +19,7 @@ async def resolve_active_packages(
     or exact role. Respects valid_from / expires_at / revoked_at
     on the assignment rows.
 
-    Role matching is individual/direct only — no hierarchy inheritance.
+    Role matching is individual/direct only -- no hierarchy inheritance.
     For department assignments with a role_id restriction, the user
     must have that exact role for the package to be active.
     """
@@ -81,7 +81,7 @@ async def check_connector_via_package(
     """
     Returns True if any active package grants this connector+operation.
     Returns False if any active package explicitly denies it.
-    Returns None if no package rule matches — caller continues to next check.
+    Returns None if no package rule matches -- caller continues to next check.
     """
     flag = f"can_{operation}"
     packages = await resolve_active_packages(user, db)

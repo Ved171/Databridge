@@ -28,7 +28,7 @@ from app.schemas import (
 router = APIRouter()
 
 
-# ─── CRUD Permission Matrix ───────────────────────────────────────────────────
+#  CRUD Permission Matrix 
 
 @router.get("/connector/{connector_id}", response_model=List[PermissionOut])
 async def get_connector_permissions(
@@ -198,7 +198,7 @@ async def my_permissions(
 
 
 
-# ─── RLS Policies ─────────────────────────────────────────────────────────────
+#  RLS Policies 
 
 @router.post("/connector/{connector_id}/rls", response_model=RLSPolicyOut)
 async def create_rls_policy(
@@ -350,7 +350,7 @@ async def delete_rls_policy(
     return {"status": "deleted"}
 
 
-# ─── Table Permissions ────────────────────────────────────────────────────────
+#  Table Permissions 
 
 @router.get("/connector/{connector_id}/tables", response_model=List[TablePermissionOut])
 async def list_table_permissions(
@@ -799,7 +799,7 @@ async def delete_role_grant(
     return {"status": "deleted"}
 
 
-# ─── Connector-Level Permissions ──────────────────────────────────────────────
+#  Connector-Level Permissions 
 
 def to_naive_utc(dt: Optional[datetime]) -> Optional[datetime]:
     if dt is None:
@@ -1082,7 +1082,7 @@ async def delete_connector_role_grant(
     return {"status": "deleted"}
 
 
-# ─── Permission Debug ────────────────────────────────────────────────────────
+#  Permission Debug 
 
 @router.get("/debug")
 async def debug_permission(

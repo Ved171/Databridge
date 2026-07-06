@@ -15,7 +15,7 @@ async def resolve_rls_context(user: User, db: AsyncSession) -> dict:
     managed_user_ids = await resolve_managed_users(str(user.id), db)
 
     # Resolve EmployeeCodes for managed users
-    # EmployeeCode is the stable cross-DB join key — never use EmployeeId
+    # EmployeeCode is the stable cross-DB join key -- never use EmployeeId
     managed_codes = []
     if managed_user_ids:
         res = await db.execute(
@@ -48,7 +48,7 @@ def substitute_placeholders(query: str, context: dict) -> tuple[str, bool]:
     Replaces {placeholder} tokens in a query string with resolved values.
     Returns (substituted_query, had_any_placeholders).
 
-    Raises ValueError if an unresolvable placeholder is found —
+    Raises ValueError if an unresolvable placeholder is found --
     never silently pass an unsubstituted placeholder to the DB.
     """
     found = set(re.findall(r'\{([\w.]+)\}', query))
@@ -78,7 +78,7 @@ async def resolve_rls_filters(
 ) -> list[str]:
     """
     Returns a list of WHERE clause fragments to AND into the query.
-    Returns [] if no filters apply — query runs unfiltered.
+    Returns [] if no filters apply -- query runs unfiltered.
     """
     from app.core.deps import resolve_department_chain, _table_name_matches
     from app.models import TableRLSFilter
@@ -115,7 +115,7 @@ async def resolve_rls_filters(
             substituted, _ = substitute_placeholders(f.filter_expression, context)
             clauses.append(substituted)
         except ValueError as e:
-            # Log and skip bad filter — never silently pass bad SQL
+            # Log and skip bad filter -- never silently pass bad SQL
             logger.error(f"RLS filter {f.id} substitution failed: {e}")
             continue
 

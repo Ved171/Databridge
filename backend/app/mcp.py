@@ -1,12 +1,16 @@
+# -*- coding: utf-8 -*-
 """
 app/mcp.py
-──────────
+----------
 DataBridge FastMCP Server -- 9 tools across read/write/federated categories.
 """
 import logging
 from fastmcp import FastMCP
 from fastmcp.server.auth import OAuthProxy
+from fastmcp.server.auth.providers.azure import AzureProvider
 from fastmcp.server.auth.providers.jwt import JWTVerifier
+from starlette.responses import RedirectResponse
+from fastapi import Request
 
 from app.core.config import settings
 from app.tools.mcp_tools import register_mcp_tools
@@ -21,17 +25,10 @@ except ImportError:
 logger = logging.getLogger(__name__)
 
 # The token verifier validates upstream DataBridge JWTs issued by /oauth/token.
-# These are the same HS256 tokens the rest of the FastAPI backend uses.
 _token_verifier = JWTVerifier(
     public_key=settings.SECRET_KEY,
     algorithm=settings.ALGORITHM,
 )
-
-# OAuthProxy bridges MCP clients (OpenWebUI) to DataBridge's own OAuth endpoints.
-# It simulates DCR for MCP clients, forwards authorization to our login page,
-# and exchanges codes for tokens at our /oauth/token endpoint.
-from starlette.responses import RedirectResponse
-from fastapi import Request
 
 class CustomOAuthProxy(OAuthProxy):
     async def _handle_idp_callback(self, request: Request):
@@ -46,41 +43,60 @@ class CustomOAuthProxy(OAuthProxy):
                 response.headers["location"] = new_location
         return response
 
-auth = CustomOAuthProxy(
-    # DataBridge's own OAuth endpoints
-    upstream_authorization_endpoint=f"{settings.BACKEND_BASE_URL}/oauth/authorize",
-    upstream_token_endpoint=f"{settings.BACKEND_BASE_URL}/oauth/token",
+class CustomAzureProvider(AzureProvider):
+    async def _handle_idp_callback(self, request: Request):
+        response = await super()._handle_idp_callback(request)
+        if isinstance(response, RedirectResponse):
+            location = response.headers.get("location", "")
+            if "https://chat.synovergetech.com/oauth/clients/" in location:
+                new_location = location.replace(
+                    "https://chat.synovergetech.com/oauth/clients/",
+                    "https://chat.synovergetech.com:8091/oauth/clients/"
+                )
+                response.headers["location"] = new_location
+        return response
 
-    # Fixed credentials returned to MCP clients during DCR registration
-    upstream_client_id=settings.OAUTH_CLIENT_ID,
-    upstream_client_secret=settings.OAUTH_CLIENT_SECRET,
-
-    # Validates upstream DataBridge JWTs
-    token_verifier=_token_verifier,
-
-    base_url=settings.MCP_BASE_URL,
-
-    # Forward PKCE to our /oauth/token endpoint
-    forward_pkce=True,
-
-    # Skip built-in consent page — our /oauth/authorize login page serves
-    # as both authentication and implicit consent
-    require_authorization_consent="external",
-
-    # Restrict redirects to OpenWebUI and localhost (dev)
-    allowed_client_redirect_uris=[
-        "http://localhost:*",
-        "http://127.0.0.1:*",
-        "https://chat.synovergetech.com:8091/*",
-        "https://chat.synovergetech.com/*",
-    ],
-)
+# Use FastMCP AzureProvider when MICROSOFT_CLIENT_ID is set; fallback to CustomOAuthProxy
+if settings.MICROSOFT_CLIENT_ID:
+    logger.info("Initializing FastMCP AzureProvider for Microsoft SSO (Tenant: %s)", settings.MICROSOFT_TENANT_ID)
+    auth = CustomAzureProvider(
+        client_id=settings.MICROSOFT_CLIENT_ID,
+        client_secret=settings.MICROSOFT_CLIENT_SECRET,
+        tenant_id=settings.MICROSOFT_TENANT_ID or "common",
+        base_url=settings.MCP_BASE_URL,
+        required_scopes=["read"],
+        additional_authorize_scopes=["User.Read", "openid", "profile", "email"],
+        require_authorization_consent=False,
+        allowed_client_redirect_uris=[
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "https://chat.synovergetech.com:8091/*",
+            "https://chat.synovergetech.com/*",
+        ],
+    )
+else:
+    auth = CustomOAuthProxy(
+        upstream_authorization_endpoint=f"{settings.BACKEND_BASE_URL}/oauth/authorize",
+        upstream_token_endpoint=f"{settings.BACKEND_BASE_URL}/oauth/token",
+        upstream_client_id=settings.OAUTH_CLIENT_ID,
+        upstream_client_secret=settings.OAUTH_CLIENT_SECRET,
+        token_verifier=_token_verifier,
+        base_url=settings.MCP_BASE_URL,
+        forward_pkce=True,
+        require_authorization_consent="external",
+        allowed_client_redirect_uris=[
+            "http://localhost:*",
+            "http://127.0.0.1:*",
+            "https://chat.synovergetech.com:8091/*",
+            "https://chat.synovergetech.com/*",
+        ],
+    )
 
 mcp = FastMCP(
     "DataBridge",
     auth=auth,
     instructions=(
-        "## ⚠ CRITICAL: READ AND FOLLOW THESE INSTRUCTIONS CAREFULLY\n"
+        "## CRITICAL: READ AND FOLLOW THESE INSTRUCTIONS CAREFULLY\n"
         "You MUST read and follow ALL instructions in this prompt. Do not skip or ignore any guidance.\n"
         "Pay special attention to the CRITICAL RULES and QUERY ROUTING sections -- they contain mandatory constraints.\n\n"
 
@@ -89,29 +105,23 @@ mcp = FastMCP(
 
         "---\n\n"
 
-        "# ⛔ CRITICAL RULES — NEVER VIOLATE THESE\n\n"
-        "## RULE 1 — ALWAYS JOIN ON EmployeeCode, NEVER ON EmployeeId\n"
+        "# CRITICAL RULES -- NEVER VIOLATE THESE\n\n"
+        "## RULE 1 -- ALWAYS JOIN ON EmployeeCode, NEVER ON EmployeeId\n"
         "When joining employee-related data across ANY two databases:\n"
-        "  ✅ CORRECT:  JOIN ON a.EmployeeCode = b.EmployeeCode\n"
-        "  ❌ WRONG:    JOIN ON a.EmployeeId = b.EmployeeId\n"
-        "  ❌ WRONG:    JOIN ON a.Id = b.Id\n"
-        "  ❌ WRONG:    any surrogate or internal primary key\n\n"
+        "  [CORRECT]  JOIN ON a.EmployeeCode = b.EmployeeCode\n"
+        "  [WRONG]    JOIN ON a.EmployeeId = b.EmployeeId\n"
+        "  [WRONG]    JOIN ON a.Id = b.Id\n"
+        "  [WRONG]    any surrogate or internal primary key\n\n"
         "WHY: Surrogate IDs (EmployeeId, Id) are local to each database and will NOT match across systems. "
         "EmployeeCode is the stable, shared business identifier. Using the wrong key produces silent data corruption.\n\n"
         "This rule is ABSOLUTE and applies to every federated query, every cross-database join, without exception.\n\n"
 
-        "## RULE 2 — ALWAYS CALL get_relevant_schema FIRST\n"
+        "## RULE 2 -- ALWAYS CALL get_relevant_schema FIRST\n"
         "Call get_relevant_schema(question=<user question>) ONCE before every query or write.\n"
         "Do NOT call list_available_databases separately -- get_relevant_schema does both internally.\n\n"
 
-        "## RULE 3 — NEVER GUESS SCHEMA\n"
+        "## RULE 3 -- NEVER GUESS SCHEMA\n"
         "Never assume table names, column names, or relationships. Always verify via get_relevant_schema.\n\n"
-
-        "## RULE 4 — CONFIRM BEFORE DELETE\n"
-        "Always ask the user for explicit confirmation before executing any DELETE operation.\n\n"
-
-        "## RULE 5 — ALWAYS RESOLVE CURRENT EMPLOYEE VIA /me API\n"
-        "Never assume the identity of the current user (e.g. from file paths, OS usernames, or git configurations). Always look at the Authorization token configured in the MCP headers or call `/api/auth/me` to get the authenticated user's `email`, `employee_code`, and `name`.\n\n"
 
         "---\n\n"
 
@@ -126,7 +136,7 @@ mcp = FastMCP(
 
         "# MANDATORY WORKFLOW\n\n"
 
-        "## STEP 1 — ALWAYS START WITH SCHEMA DISCOVERY\n"
+        "## STEP 1 -- ALWAYS START WITH SCHEMA DISCOVERY\n"
         "For EVERY user request involving data:\n\n"
         "    get_relevant_schema(question=<user question>)\n\n"
         "This:\n"
@@ -270,4 +280,48 @@ mcp = FastMCP(
 register_mcp_tools(mcp)
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=9000, path="/")
+    import uvicorn
+    app = mcp.http_app(path="/")
+
+    @app.on_event("startup")
+    async def register_static_clients():
+        try:
+            from fastmcp.server.auth.oauth_proxy.models import ProxyDCRClient
+            from pydantic import AnyUrl
+
+            client_id = settings.OAUTH_CLIENT_ID or "databridge-mcp-client"
+            logger.info("Registering static OAuth client on startup: %s", client_id)
+
+            redirect_uris = [
+                AnyUrl("https://chat.synovergetech.com/oauth/clients/mcp:databridge/callback"),
+                AnyUrl("https://chat.synovergetech.com:8091/oauth/clients/mcp:databridge/callback"),
+                AnyUrl("http://localhost/callback"),
+            ]
+
+            proxy_client = ProxyDCRClient(
+                client_id=client_id,
+                client_secret=None,
+                redirect_uris=redirect_uris,
+                grant_types=["authorization_code", "refresh_token"],
+                scope="read",
+                token_endpoint_auth_method="none",
+                allowed_redirect_uri_patterns=None,
+                client_name="Open WebUI",
+            )
+
+            if hasattr(auth, "_client_store"):
+                await auth._client_store.put(key=client_id, value=proxy_client)
+                logger.info("Successfully registered static OAuth client '%s' in client store.", client_id)
+            else:
+                logger.warning("Auth provider does not have _client_store. Static client registration skipped.")
+        except Exception as e:
+            logger.error("Failed to register static OAuth client on startup: %s", e, exc_info=True)
+
+    # Path rewriter middleware: seamlessly route both / and /mcp requests from OpenWebUI to root
+    @app.middleware("http")
+    async def rewrite_mcp_path(request: Request, call_next):
+        if request.scope["path"] == "/mcp" or request.scope["path"].startswith("/mcp/"):
+            request.scope["path"] = request.scope["path"][4:] or "/"
+        return await call_next(request)
+
+    uvicorn.run(app, host="0.0.0.0", port=9000)

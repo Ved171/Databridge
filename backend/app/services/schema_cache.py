@@ -1,6 +1,6 @@
 """
 app/services/schema_cache.py
-────────────────────────────
+
 TTL in-memory cache for connector schemas and user permissions.
 
 Replaces the per-call schema fetch in _get_accessible_connectors_with_schema
