@@ -67,9 +67,12 @@ def _render_login_page(
     error_html = ""
     if error:
         error_html = f"""
-        <div style="background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;
-                    padding:12px 16px;border-radius:8px;margin-bottom:20px;
-                    font-size:14px;">
+        <div class="error-banner">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="flex-shrink:0;">
+                <circle cx="8" cy="8" r="7" stroke="#b91c1c" stroke-width="1.5"/>
+                <path d="M8 4.5v4" stroke="#b91c1c" stroke-width="1.5" stroke-linecap="round"/>
+                <circle cx="8" cy="11" r="0.75" fill="#b91c1c"/>
+            </svg>
             {error}
         </div>"""
 
@@ -79,98 +82,158 @@ def _render_login_page(
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DataBridge — Sign In</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <style>
         *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
         body {{
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-            color: #e2e8f0;
+            background: #faf9f5;
+            color: #1b1c1a;
         }}
         .card {{
-            background: #1e293b;
-            border: 1px solid #334155;
+            background: #ffffff;
+            border: 1px solid #E8E6DF;
             border-radius: 16px;
-            padding: 40px;
+            padding: 44px 40px 36px;
             width: 100%;
             max-width: 420px;
-            box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 12px -2px rgba(26, 25, 22, 0.05);
         }}
         .logo {{
             text-align: center;
-            margin-bottom: 28px;
+            margin-bottom: 32px;
+        }}
+        .logo-icon {{
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 48px;
+            height: 48px;
+            background: #eef4f5;
+            border-radius: 12px;
+            margin-bottom: 16px;
+        }}
+        .logo-icon svg {{
+            width: 26px;
+            height: 26px;
         }}
         .logo h1 {{
-            font-size: 24px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #38bdf8, #818cf8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 22px;
+            font-weight: 800;
+            color: #1b1c1a;
+            letter-spacing: -0.02em;
         }}
         .logo p {{
             font-size: 13px;
-            color: #94a3b8;
+            color: #6B6A65;
             margin-top: 6px;
+            line-height: 1.5;
+        }}
+        .form-group {{
+            margin-bottom: 18px;
         }}
         label {{
             display: block;
-            font-size: 13px;
-            font-weight: 500;
-            color: #94a3b8;
+            font-size: 12px;
+            font-weight: 600;
+            color: #494740;
             margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }}
         input[type="email"], input[type="password"] {{
             width: 100%;
             padding: 10px 14px;
-            border: 1px solid #475569;
+            border: 1px solid #E8E6DF;
             border-radius: 8px;
-            background: #0f172a;
-            color: #e2e8f0;
-            font-size: 15px;
-            margin-bottom: 18px;
+            background: #f4f4f0;
+            color: #1b1c1a;
+            font-family: inherit;
+            font-size: 14px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }}
         input:focus {{
-            border-color: #818cf8;
+            border-color: #48757c;
+            box-shadow: 0 0 0 2px rgba(72, 117, 124, 0.15);
+        }}
+        input::placeholder {{
+            color: #7a776f;
         }}
         button {{
             width: 100%;
             padding: 12px;
             border: none;
             border-radius: 8px;
-            background: linear-gradient(135deg, #6366f1, #818cf8);
-            color: #fff;
-            font-size: 15px;
+            background: #48757c;
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: opacity 0.2s;
+            transition: opacity 0.2s, transform 0.1s;
+            margin-top: 6px;
         }}
         button:hover {{ opacity: 0.9; }}
+        button:active {{ transform: scale(0.99); }}
         .footer {{
             text-align: center;
-            margin-top: 20px;
-            font-size: 12px;
-            color: #64748b;
+            margin-top: 24px;
+            font-size: 11px;
+            font-weight: 500;
+            color: #7a776f;
+            letter-spacing: 0.03em;
+        }}
+        .error-banner {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            padding: 10px 14px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            line-height: 1.4;
+        }}
+        .divider {{
+            height: 1px;
+            background: #E8E6DF;
+            margin: 24px 0;
         }}
     </style>
 </head>
 <body>
     <div class="card">
         <div class="logo">
+            <div class="logo-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="#48757c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                </svg>
+            </div>
             <h1>DataBridge</h1>
             <p>Sign in to continue to your MCP session</p>
         </div>
         {error_html}
         <form method="post" action="/oauth/authorize">
-            <label for="email">Email</label>
-            <input type="email" id="email" name="email" required autofocus />
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="you@company.com" required autofocus />
+            </div>
 
-            <label for="password">Password</label>
-            <input type="password" id="password" name="password" required />
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" placeholder="••••••••" required />
+            </div>
 
             <input type="hidden" name="client_id" value="{client_id}" />
             <input type="hidden" name="redirect_uri" value="{redirect_uri}" />
@@ -181,6 +244,7 @@ def _render_login_page(
 
             <button type="submit">Sign In</button>
         </form>
+        <div class="divider"></div>
         <div class="footer">Secured by DataBridge OAuth 2.1</div>
     </div>
 </body>
