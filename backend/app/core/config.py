@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # Encryption (for storing connector credentials)
     ENCRYPTION_KEY: str = "change-me-32-char-encryption-key!"
+    LEGACY_ENCRYPTION_KEY: Optional[str] = "change-me-32-char-encryption-key!"
 
     # SQLite file uploads
     SQLITE_UPLOAD_DIR: str = os.environ.get("SQLITE_UPLOAD_DIR", "/data/sqlite")

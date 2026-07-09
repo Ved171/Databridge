@@ -1,6 +1,6 @@
 """
 app/tools/mcp_tools.py
-
+──────────────────────
 Registers ALL DataBridge tool functions as FastMCP tools.
 """
 from __future__ import annotations
@@ -9,6 +9,7 @@ import json
 import logging
 import time
 import hashlib
+import uuid
 from typing import Optional, List
 from pathlib import Path
 
@@ -24,20 +25,34 @@ from app.tools.db_tools import (
     tool_get_database_schema,
     tool_get_global_schema_awareness,
     tool_execute_query,
+    tool_record_discovery,
+)
+from app.tools.crud_helpers import (
     tool_create_record,
     tool_update_record,
     tool_delete_record,
+)
+from app.tools.federation import (
     tool_execute_federated_query,
-    tool_record_discovery,
     tool_mirror_table,
 )
 
 logger = logging.getLogger(__name__)
 
 
-#  User auth cache 
+# ── User auth cache ───────────────────────────────────────────────────────────
 _user_cache: dict = {}
-_USER_CACHE_TTL = 60  # seconds
+_USER_CACHE_TTL = 60 
+
+
+def _safe_uuid(value: Optional[str]) -> Optional[str]:
+    if not value:
+        return None
+    try:
+        uuid.UUID(value)
+        return value
+    except (ValueError, TypeError):
+        return None
 
 
 async def _resolve_user(token_or_access, db):
@@ -55,13 +70,13 @@ async def _resolve_user(token_or_access, db):
 
     if isinstance(claims, dict):
         email = claims.get("email") or claims.get("preferred_username") or claims.get("upn")
-        user_id = claims.get("sub")
+        user_id = _safe_uuid(claims.get("sub"))
     
     if not user_id and not email:
         token_str = getattr(token_or_access, "token", str(token_or_access))
         try:
             payload = decode_token(token_str)
-            user_id = payload.get("sub")
+            user_id = _safe_uuid(payload.get("sub"))
             email = payload.get("email")
         except Exception:
             pass
@@ -78,7 +93,7 @@ async def _resolve_user(token_or_access, db):
     # Auto-provision user if logging in via Azure AD / Microsoft for the first time
     if not user and email:
         ms_email = email.lower().strip()
-        ms_name = ms_email.split("@")[0].capitalize()
+        ms_name = " ".join(part.capitalize() for part in ms_email.split("@")[0].split("."))
 
         from app.models import Role
         role_res = await db.execute(select(Role).where(Role.slug == "member"))
@@ -169,7 +184,7 @@ async def _build_ctx_and_run(mcp_ctx: Context, coro_factory):
 def register_mcp_tools(mcp: FastMCP) -> None:
     """Register all DataBridge tools and resources on the FastMCP instance."""
 
-    #  RESOURCES 
+    # ── RESOURCES ─────────────────────────────────────────────────────────────
     @mcp.resource("schema://databridge/atlas",
                   description="List all available connector atlases with metadata.")
     async def list_connector_atlases() -> str:
@@ -199,7 +214,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return json.dumps({"error": f"No atlas found for connector '{connector_id}'. Run create_atlases.py first."})
         return json.dumps(atlas, indent=2)
 
-    #  READ: List Databases 
+    # ── READ: List Databases ──────────────────────────────────────────────────
     @mcp.tool
     async def list_available_databases(ctx: Context) -> str:
         """
@@ -209,7 +224,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
         """
         return await _build_ctx_and_run(ctx, tool_list_available_databases)
 
-    #  READ: Get Relevant Schema 
+    # ── READ: Get Relevant Schema ─────────────────────────────────────────────
     @mcp.tool
     async def get_relevant_schema(ctx: Context, question: str) -> str:
         """
@@ -243,7 +258,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
 
         return await _build_ctx_and_run(ctx, _run)
 
-    #  READ: Get Schema 
+    # ── READ: Get Schema ──────────────────────────────────────────────────────
     @mcp.tool
     async def get_database_schema(
         ctx: Context,
@@ -266,7 +281,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return await tool_get_database_schema(tool_ctx, db_id, schema_name, table_names)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  READ: Global Awareness 
+    # ── READ: Global Awareness ────────────────────────────────────────────────
     @mcp.tool
     async def get_global_schema_awareness(ctx: Context) -> str:
         """
@@ -277,7 +292,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
         """
         return await _build_ctx_and_run(ctx, tool_get_global_schema_awareness)
 
-    #  READ: Execute Raw Query 
+    # ── READ: Execute Raw Query ───────────────────────────────────────────────
     @mcp.tool
     async def execute_query(ctx: Context, db_id: str, query: str) -> str:
         """
@@ -293,7 +308,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return await tool_execute_query(tool_ctx, db_id, query)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  FEDERATED: Execute Cross-Database Query 
+    # ── FEDERATED: Execute Cross-Database Query ───────────────────────────────
     @mcp.tool
     async def execute_federated_query(
         ctx: Context,
@@ -323,7 +338,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return await tool_execute_federated_query(tool_ctx, queries, federation_sql)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  CREATE: Insert Record 
+    # ── CREATE: Insert Record ─────────────────────────────────────────────────
     @mcp.tool
     async def create_record(
         ctx: Context,
@@ -341,7 +356,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return await tool_create_record(tool_ctx, db_id, table_or_collection, data)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  UPDATE: Update Record 
+    # ── UPDATE: Update Record ─────────────────────────────────────────────────
     @mcp.tool
     async def update_record(
         ctx: Context,
@@ -361,7 +376,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return await tool_update_record(tool_ctx, db_id, table_or_collection, record_id, id_field, updates)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  DELETE: Delete Record 
+    # ── DELETE: Delete Record ─────────────────────────────────────────────────
     @mcp.tool
     async def delete_record(
         ctx: Context,
@@ -372,13 +387,13 @@ def register_mcp_tools(mcp: FastMCP) -> None:
     ) -> str:
         """
         Delete a record by its ID. Requires DELETE permission.
-         Irreversible. Always confirm with the user before calling.
+        ⚠ Irreversible. Always confirm with the user before calling.
         """
         async def _run(tool_ctx: ToolContext) -> str:
             return await tool_delete_record(tool_ctx, db_id, table_or_collection, record_id, id_field)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  METADATA: Record Discovery 
+    # ── METADATA: Record Discovery ───────────────────────────────────────────
     @mcp.tool
     async def record_discovery(
         ctx: Context,
@@ -409,7 +424,7 @@ def register_mcp_tools(mcp: FastMCP) -> None:
             return await tool_record_discovery(tool_ctx, table_name, summary, gotcha, aggregation, learned_filter)
         return await _build_ctx_and_run(ctx, _run)
 
-    #  METADATA: Mirror Table 
+    # ── METADATA: Mirror Table ───────────────────────────────────────────────
     @mcp.tool
     async def mirror_database_table(
         ctx: Context,

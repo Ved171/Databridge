@@ -251,7 +251,7 @@ async def preview_rls_filter(
     }
 
 
-#  GAP 4: Global RLS settings (kill switch) 
+# ── GAP 4: Global RLS settings (kill switch) ─────────────────────────────────
 
 @router.get("/settings/")
 async def get_rls_settings(
@@ -304,7 +304,7 @@ async def update_rls_settings(
     return {"rls_enabled": rls_enabled}
 
 
-#  GAP 2: Apply standard manager hierarchy filters 
+# ── GAP 2: Apply standard manager hierarchy filters ──────────────────────────
 
 class StandardHierarchyPayload(BaseModel):
     connector_id: str

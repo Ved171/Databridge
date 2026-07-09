@@ -189,6 +189,38 @@ async def promote_user(
     return user
 
 
+@router.patch("/{user_id}/department", response_model=UserOut)
+async def change_department(
+    user_id: str,
+    department_id: str = Query(..., description="Target department ID"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_superadmin),
+):
+    """
+    Change a user's department. Superadmin only.
+    """
+    from app.models import Department
+
+    # Validate department exists
+    dept_res = await db.execute(select(Department).where(Department.id == department_id))
+    department = dept_res.scalar_one_or_none()
+    if not department:
+        raise HTTPException(status_code=400, detail="Department not found.")
+
+    # Load target user
+    result = await db.execute(select(User).options(selectinload(User.role_relation)).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id:
+        raise HTTPException(status_code=400, detail="Cannot change your own department via this endpoint")
+
+    user.department_id = department.id
+    await db.flush()
+    await db.refresh(user)
+    return user
+
+
 @router.delete("/{user_id}", status_code=200)
 async def delete_user(
     user_id: str,

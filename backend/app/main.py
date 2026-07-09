@@ -40,14 +40,13 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5178",
-        "http://127.0.0.1:5178",
         "http://192.168.3.83:5173",
         "http://192.168.2.149:5178",
         "https://chat.synovergetech.com:8091",
         "https://chat.synovergetech.com",
+        "http://192.168.3.222:5173",
+	"https://databridge.synovergetech.com:5178"
+
     ],
     allow_credentials=True,
     allow_methods=["*"],

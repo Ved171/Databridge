@@ -1,11 +1,11 @@
 """
 app/tools/nosql_rls.py
-
+──────────────────────
 Row-Level Security injection for NoSQL connectors:
-   MongoDB:        Prepends $match stage to aggregation pipelines
-   Elasticsearch:  Wraps queries in bool.filter clauses
-   Redis:          Restricts key patterns to allowed prefixes
-   Salesforce:     Injects WHERE clauses into SOQL queries
+  • MongoDB:        Prepends $match stage to aggregation pipelines
+  • Elasticsearch:  Wraps queries in bool.filter clauses
+  • Redis:          Restricts key patterns to allowed prefixes
+  • Salesforce:     Injects WHERE clauses into SOQL queries
 
 Each engine reads from `policy.filter_expr_nosql` (JSON), resolves
 user variables ({user.id}, {user.email}, {user.name}), and mutates
@@ -23,9 +23,9 @@ from typing import Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
-# 
+# ─────────────────────────────────────────────────────────────────────────────
 # Shared helpers
-# 
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _resolve_user_vars(value: str, user_ctx: Dict) -> str:
     """Replace {user.id}, {user.email}, {user.name} in a string value."""
@@ -99,13 +99,13 @@ def _build_mongo_match(filter_obj: dict) -> dict:
 
     Supported formats:
       {"field": "org_id", "op": "eq", "value": "abc"}
-         {"org_id": "abc"}
+        → {"org_id": "abc"}
       {"field": "status", "op": "in", "value": ["active", "pending"]}
-         {"status": {"$in": ["active", "pending"]}}
+        → {"status": {"$in": ["active", "pending"]}}
       {"field": "age", "op": "gt", "value": 18}
-         {"age": {"$gt": 18}}
-      {"org_id": "abc"}   (raw MongoDB filter -- passed through)
-         {"org_id": "abc"}
+        → {"age": {"$gt": 18}}
+      {"org_id": "abc"}   (raw MongoDB filter — passed through)
+        → {"org_id": "abc"}
     """
     if "field" in filter_obj and "op" in filter_obj:
         field = filter_obj["field"]
@@ -132,13 +132,13 @@ def _build_mongo_match(filter_obj: dict) -> dict:
             logger.warning("Unknown NoSQL RLS operator '%s', treating as eq", op)
             return {field: value}
     else:
-        # Raw MongoDB filter object -- pass through directly
+        # Raw MongoDB filter object — pass through directly
         return filter_obj
 
 
-# 
+# ─────────────────────────────────────────────────────────────────────────────
 # MongoDB RLS
-# 
+# ─────────────────────────────────────────────────────────────────────────────
 
 def apply_rls_mongodb(query_json: str, policies: list, user_ctx: Dict) -> str:
     """
@@ -223,9 +223,9 @@ def apply_rls_mongodb(query_json: str, policies: list, user_ctx: Dict) -> str:
     return json.dumps(query)
 
 
-# 
+# ─────────────────────────────────────────────────────────────────────────────
 # Elasticsearch RLS
-# 
+# ─────────────────────────────────────────────────────────────────────────────
 
 def _build_es_filter(filter_obj: dict) -> dict:
     """
@@ -233,13 +233,13 @@ def _build_es_filter(filter_obj: dict) -> dict:
 
     Supported formats:
       {"field": "tenant_id", "op": "eq", "value": "abc"}
-         {"term": {"tenant_id": "abc"}}
+        → {"term": {"tenant_id": "abc"}}
       {"field": "status", "op": "in", "value": ["active", "pending"]}
-         {"terms": {"status": ["active", "pending"]}}
+        → {"terms": {"status": ["active", "pending"]}}
       {"field": "age", "op": "gt", "value": 18}
-         {"range": {"age": {"gt": 18}}}
-      {"term": {"tenant_id": "abc"}}   (raw ES filter -- passed through)
-         {"term": {"tenant_id": "abc"}}
+        → {"range": {"age": {"gt": 18}}}
+      {"term": {"tenant_id": "abc"}}   (raw ES filter — passed through)
+        → {"term": {"tenant_id": "abc"}}
     """
     if "field" in filter_obj and "op" in filter_obj:
         field = filter_obj["field"]
@@ -262,7 +262,7 @@ def _build_es_filter(filter_obj: dict) -> dict:
             logger.warning("Unknown ES RLS operator '%s', treating as term", op)
             return {"term": {field: value}}
     else:
-        # Raw ES filter -- pass through
+        # Raw ES filter — pass through
         return filter_obj
 
 
@@ -333,9 +333,9 @@ def apply_rls_elasticsearch(query_json: str, policies: list, user_ctx: Dict) -> 
     return json.dumps(query)
 
 
-# 
-# Redis RLS -- Key-Prefix Restriction
-# 
+# ─────────────────────────────────────────────────────────────────────────────
+# Redis RLS — Key-Prefix Restriction
+# ─────────────────────────────────────────────────────────────────────────────
 
 def apply_rls_redis(query_json: str, policies: list, user_ctx: Dict) -> str:
     """
@@ -355,7 +355,7 @@ def apply_rls_redis(query_json: str, policies: list, user_ctx: Dict) -> str:
         logger.warning("Redis RLS: Failed to parse query JSON")
         return query_json
 
-    # Redis doesn't have collections/tables -- match on key prefix table_name
+    # Redis doesn't have collections/tables — match on key prefix table_name
     # The table_name in the RLS policy corresponds to the Redis key prefix
     cmd = query.get("command", "").upper()
 
@@ -420,9 +420,9 @@ def _key_matches_any_pattern(key: str, patterns: List[str]) -> bool:
     return False
 
 
-# 
-# Salesforce RLS -- SOQL WHERE injection
-# 
+# ─────────────────────────────────────────────────────────────────────────────
+# Salesforce RLS — SOQL WHERE injection
+# ─────────────────────────────────────────────────────────────────────────────
 
 def apply_rls_salesforce(query_str: str, policies: list, user_ctx: Dict) -> str:
     """
@@ -437,7 +437,7 @@ def apply_rls_salesforce(query_str: str, policies: list, user_ctx: Dict) -> str:
     stripped = query_str.strip()
 
     if stripped.startswith("{"):
-        # JSON CRUD operation -- extract the object name and validate
+        # JSON CRUD operation — extract the object name and validate
         try:
             obj = json.loads(stripped)
             object_name = obj.get("object", "")
@@ -485,7 +485,7 @@ def apply_rls_salesforce(query_str: str, policies: list, user_ctx: Dict) -> str:
         except json.JSONDecodeError:
             return query_str
 
-    # SOQL SELECT query -- inject WHERE conditions
+    # SOQL SELECT query — inject WHERE conditions
     rls_conditions = []
     for policy in policies:
         # For Salesforce, we can use the SQL filter_expr directly on SOQL
@@ -537,9 +537,9 @@ def apply_rls_salesforce(query_str: str, policies: list, user_ctx: Dict) -> str:
             return query_str + f" WHERE {combined_rls}"
 
 
-# 
-# Router -- dispatches to the correct engine
-# 
+# ─────────────────────────────────────────────────────────────────────────────
+# Router — dispatches to the correct engine
+# ─────────────────────────────────────────────────────────────────────────────
 
 def apply_rls_nosql(
     query_json: str,

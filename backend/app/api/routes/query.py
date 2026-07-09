@@ -1,6 +1,6 @@
 """
 app/api/routes/query.py
-
+───────────────────────
 Single chat endpoint -- every question goes through the LangChain agent.
 The agent decides which tools to use (single-db, cross-db, CRUD, etc.).
 """
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
-#  Schemas 
+# ─── Schemas ──────────────────────────────────────────────────────────────────
 
 class ChatRequest(BaseModel):
     message: str
@@ -47,7 +47,7 @@ class QueryLogOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
-#  Chat Endpoint (DEPRECATED) 
+# ─── Chat Endpoint (DEPRECATED) ────────────────────────────────────────────────────────────
 # The /chat and /chat/stream endpoints are deprecated.
 # The client LLM should call DataBridge MCP tools directly instead.
 # These endpoints remain for backwards compatibility but return a message.
@@ -83,7 +83,7 @@ async def chat_stream(
     )
 
 
-#  Logs 
+# ─── Logs ─────────────────────────────────────────────────────────────────────
 
 @router.get("/logs", response_model=List[QueryLogOut])
 async def get_query_logs(

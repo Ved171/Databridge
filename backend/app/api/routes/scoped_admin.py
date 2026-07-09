@@ -20,7 +20,7 @@ from app.models import (
 router = APIRouter()
 
 
-#  Pydantic payloads 
+# ── Pydantic payloads ─────────────────────────────────────────────────────────
 
 class ConnectorAccessPayload(BaseModel):
     target_user_id: str
@@ -43,7 +43,7 @@ class TableAccessDeletePayload(BaseModel):
     table_name: str
 
 
-#  Shared validation helpers 
+# ── Shared validation helpers ─────────────────────────────────────────────────
 
 async def _require_share_access(
     caller: User, connector_id: str, db: AsyncSession
@@ -93,7 +93,7 @@ def _check_grantor_ownership(record, caller_id: str) -> None:
         )
 
 
-#  Endpoints 
+# ── Endpoints ─────────────────────────────────────────────────────────────────
 
 @router.post("/{connector_id}/scoped-admin/connector-access/")
 async def grant_connector_access(

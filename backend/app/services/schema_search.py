@@ -1,6 +1,6 @@
 """
 app/services/schema_search.py
-
+─────────────────────────────
 Fast, token-based schema retrieval -- replaces embedding API calls.
 
 Instead of:
@@ -206,9 +206,9 @@ def pick_cross_db_tables(
     return result
 
 
-# 
-# Smart Minification -- token-optimized schema for LLM consumption
-# 
+# ─────────────────────────────────────────────────────────────────────────────
+# Smart Minification — token-optimized schema for LLM consumption
+# ─────────────────────────────────────────────────────────────────────────────
 
 # Audit / boilerplate columns that are almost never queried by users.
 # Kept in sync with sync_schema.py AUDIT_COLUMNS.
@@ -222,7 +222,7 @@ _AUDIT_COLUMNS = {
     "updatedby", "updateddate",
 }
 
-# Long SQL type  compact form (mirrors sync_schema.py conventions).
+# Long SQL type → compact form (mirrors sync_schema.py conventions).
 _TYPE_SHORTHANDS: List[tuple] = [
     ("character varying", "varchar"),
     ("timestamp with time zone", "timestamptz"),
@@ -240,7 +240,7 @@ def _shorten_type(col_type: str) -> str:
     """Shorten a SQL type string for token savings."""
     t = col_type.strip()
     t_lower = t.lower()
-    # Strip NOT NULL suffix -- we don't surface nullability in the minified view
+    # Strip NOT NULL suffix — we don't surface nullability in the minified view
     t_lower = t_lower.replace(" not null", "")
     t = t[:len(t_lower)]  # keep original length after strip
     for long_form, short_form in _TYPE_SHORTHANDS:
@@ -262,7 +262,7 @@ def _minify_table(table: Dict) -> Dict:
         "schema": table.get("schema", ""),
     }
 
-    #  Compact column format 
+    # ── Compact column format ─────────────────────────────────────────────
     cols: List[str] = []
     for col in table.get("columns", []):
         if isinstance(col, dict):
@@ -283,7 +283,7 @@ def _minify_table(table: Dict) -> Dict:
 
     mini["cols"] = cols
 
-    #  Tribal knowledge (keep as-is -- critical for accuracy) 
+    # ── Tribal knowledge (keep as-is — critical for accuracy) ─────────────
     for field in ("summary", "gotcha", "learned_filter", "aggregation"):
         val = table.get(field)
         if val:

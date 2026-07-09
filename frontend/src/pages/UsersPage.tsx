@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Trash2, ShieldCheck, Plus, X, Copy, Check, Users, Building, ShieldAlert, AlertTriangle } from 'lucide-react'
+import { Trash2, ShieldCheck, Plus, X, Copy, Check, Users, Building, ShieldAlert, AlertTriangle, Pencil } from 'lucide-react'
 import api from '../lib/api'
 import toast from 'react-hot-toast'
 import { useAuthStore } from '../store/auth'
 
-interface PromoteTarget {
+interface EditTarget {
   id: string
   name: string
-  currentRole: string
+  currentRoleSlug: string
+  currentDeptId: string | null
 }
 
 interface UserData {
@@ -32,9 +33,10 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
   const qc = useQueryClient()
   const { user: me } = useAuthStore()
 
-  // State variables
-  const [promoteTarget, setPromoteTarget] = useState<PromoteTarget | null>(null)
-  const [selectedRole, setSelectedRole] = useState<string>('')
+  // Edit User State (combined role + department)
+  const [editTarget, setEditTarget] = useState<EditTarget | null>(null)
+  const [editRole, setEditRole] = useState<string>('')
+  const [editDeptId, setEditDeptId] = useState<string>('')
   
   // Delete Confirmation State
   const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
@@ -88,9 +90,19 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users'] })
       toast.success('Role updated successfully')
-      setPromoteTarget(null)
     },
     onError: (e: any) => toast.error(e.response?.data?.detail || 'Failed to change role'),
+  })
+
+  // Change Department
+  const changeDept = useMutation({
+    mutationFn: ({ id, department_id }: { id: string; department_id: string }) =>
+      api.patch(`/api/users/${id}/department?department_id=${department_id}`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      toast.success('Department updated successfully')
+    },
+    onError: (e: any) => toast.error(e.response?.data?.detail || 'Failed to change department'),
   })
 
   // Create User
@@ -107,10 +119,31 @@ export function UsersPage({ embedded = false }: UsersPageProps = {}) {
     }
   })
 
-  const openPromoteModal = (u: any) => {
-    const currentRole = u.is_superadmin ? 'superadmin' : (u.role || 'member')
-    setPromoteTarget({ id: u.id, name: u.name, currentRole })
-    setSelectedRole(currentRole)
+  const openEditModal = (u: UserData) => {
+    const currentRoleSlug = u.is_superadmin ? 'superadmin' : (u.role || 'member')
+    setEditTarget({ id: u.id, name: u.name, currentRoleSlug, currentDeptId: u.department_id })
+    setEditRole(currentRoleSlug)
+    setEditDeptId(u.department_id || '')
+  }
+
+  const handleEditSave = async () => {
+    if (!editTarget) return
+    const roleChanged = editRole !== editTarget.currentRoleSlug
+    const deptChanged = editDeptId && editDeptId !== (editTarget.currentDeptId || '')
+    try {
+      if (roleChanged) {
+        await promote.mutateAsync({ id: editTarget.id, role: editRole })
+      }
+      if (deptChanged) {
+        await changeDept.mutateAsync({ id: editTarget.id, department_id: editDeptId })
+      }
+      if (!roleChanged && !deptChanged) {
+        toast('No changes to save', { icon: 'ℹ️' })
+      }
+      setEditTarget(null)
+    } catch {
+      // errors already toasted by individual mutations
+    }
   }
 
   const handleInviteSubmit = (e: React.FormEvent) => {
@@ -238,7 +271,6 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
             <thead>
               <tr className="bg-gray-50 border-b border-gray-100">
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Department</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Role</th>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Joined</th>
@@ -247,7 +279,7 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
             </thead>
             <tbody className="divide-y divide-gray-50">
               {users.map((u: UserData) => (
-                <tr key={u.id} className={u.is_active ? '' : 'opacity-60'}>
+                <tr key={u.id}>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 bg-brand-100 rounded-full flex items-center justify-center">
@@ -261,11 +293,7 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4">
-                    <span className={`badge ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                      {u.is_active ? 'Active' : 'Disabled'}
-                    </span>
-                  </td>
+
                   <td className="px-6 py-4 text-sm text-gray-700">
                     <span
                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border whitespace-nowrap"
@@ -284,7 +312,7 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-400">
-                    {new Date(u.created_at).toLocaleDateString()}
+                    {new Date(u.created_at).toLocaleDateString('en-GB')}
                   </td>
                   <td className="px-6 py-4">
                     {(() => {
@@ -298,12 +326,14 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
                       if (!canManage) return null
                       return (
                         <div className="flex items-center gap-2 justify-end">
-                          <button
-                            className="btn-secondary text-xs py-1.5 flex items-center gap-1 whitespace-nowrap"
-                            onClick={() => openPromoteModal(u)}
-                          >
-                             Change Role
-                          </button>
+                          {me?.is_superadmin && (
+                            <button
+                              className="btn-secondary text-xs py-1.5 flex items-center gap-1 whitespace-nowrap"
+                              onClick={() => openEditModal(u)}
+                            >
+                              <Pencil className="w-3.5 h-3.5" /> Edit
+                            </button>
+                          )}
 
                           <button
                             className="text-xs py-1.5 px-3 rounded-lg font-medium flex items-center gap-1 border transition-colors whitespace-nowrap border-red-200 text-red-600 hover:bg-red-50"
@@ -322,82 +352,91 @@ Instructions: Please log in at http://192.168.2.149:5178/login using your email 
         </div>
       )}
 
-      {/* â”€â”€ Promote Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
-      {promoteTarget && (
+      {/* ── Edit User Modal (Role + Department) ─────────────────────────── */}
+      {editTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
             className="absolute inset-0 bg-black/40 backdrop-blur-sm"
-            onClick={() => setPromoteTarget(null)}
+            onClick={() => setEditTarget(null)}
           />
 
           <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 overflow-hidden border border-gray-100">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900">Change Role</h3>
+                <h3 className="text-lg font-semibold text-gray-900">Edit User</h3>
                 <p className="text-sm text-gray-500 mt-0.5">
-                  Update role for <span className="font-medium text-gray-700">{promoteTarget.name}</span>
+                  Update role & department for <span className="font-medium text-gray-700">{editTarget.name}</span>
                 </p>
               </div>
               <button
                 className="p-1 rounded-md hover:bg-gray-100 transition-colors"
-                onClick={() => setPromoteTarget(null)}
+                onClick={() => setEditTarget(null)}
               >
                 <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
 
-            <div className="px-6 py-4 space-y-2">
-              {roles
-                .filter(opt => {
-                  const RANK: Record<string, number> = { superadmin: 3, manager: 2, member: 1 }
-                  const myRank = RANK[me?.is_superadmin ? 'superadmin' : (me?.role || 'member')] || 1
-                  return me?.is_superadmin ? true : opt.level < myRank
-                })
-                .map((opt) => (
-                  <label
-                    key={opt.id}
-                    className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
-                      selectedRole === opt.slug
-                        ? 'border-brand-500 bg-brand-50/10'
-                        : 'border-gray-100 hover:border-gray-200 bg-white'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="role"
-                      value={opt.slug}
-                      checked={selectedRole === opt.slug}
-                      onChange={() => setSelectedRole(opt.slug)}
-                      className="mt-0.5 accent-brand-600"
-                    />
-                    <div>
-                      <p className="font-medium text-sm text-gray-900">{opt.name}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">Access Rank Level: {opt.level}</p>
-                    </div>
-                  </label>
-                ))}
+            <div className="px-6 py-5 space-y-5">
+              {/* Department Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Department
+                </label>
+                <select
+                  value={editDeptId}
+                  onChange={e => setEditDeptId(e.target.value)}
+                  className="input w-full"
+                >
+                  <option value="">No Department</option>
+                  {departments.map(d => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Role Dropdown */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  Role
+                </label>
+                <select
+                  value={editRole}
+                  onChange={e => setEditRole(e.target.value)}
+                  className="input w-full"
+                >
+                  {roles
+                    .filter(opt => {
+                      const RANK: Record<string, number> = { superadmin: 3, manager: 2, member: 1 }
+                      const myRank = RANK[me?.is_superadmin ? 'superadmin' : (me?.role || 'member')] || 1
+                      return me?.is_superadmin ? true : opt.level < myRank
+                    })
+                    .map(opt => (
+                      <option key={opt.id} value={opt.slug}>{opt.name} (Lvl {opt.level})</option>
+                    ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50">
               <button
                 className="btn-secondary text-sm"
-                onClick={() => setPromoteTarget(null)}
+                onClick={() => setEditTarget(null)}
               >
                 Cancel
               </button>
               <button
-                className="btn-primary text-sm animate-pulse-once"
-                disabled={selectedRole === promoteTarget.currentRole || promote.isPending}
-                onClick={() => promote.mutate({ id: promoteTarget.id, role: selectedRole })}
+                className="btn-primary text-sm"
+                disabled={promote.isPending || changeDept.isPending}
+                onClick={handleEditSave}
               >
-                {promote.isPending ? 'Updating...' : 'Confirm'}
+                {(promote.isPending || changeDept.isPending) ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* â”€â”€ Create User Modal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── Create User Modal ────────────────────────────────────────────── */}
       {isInviteOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}

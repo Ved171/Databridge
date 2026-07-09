@@ -1,6 +1,6 @@
 """
 app/tools/sql_helpers.py
-
+──────────────────────────
 SQL operation classification and RLS injection helpers.
 
 Replaces the functions that were in nl_query.py.
@@ -175,12 +175,12 @@ def apply_rls(
     if not combined_rls:
         return query
 
-    #  Fast pre-check: is the table even mentioned? 
+    # ── Fast pre-check: is the table even mentioned? ──────────────────────
     given_bare = table_name.strip().lower().rsplit(".", 1)[-1]
     if not re.search(r'\b' + re.escape(given_bare) + r'\b', query, re.IGNORECASE):
         return query
 
-    #  AST-based injection (preferred) 
+    # ── AST-based injection (preferred) ──────────────────────────────────
     try:
         import sqlglot
         from sqlglot import exp
@@ -211,7 +211,7 @@ def apply_rls(
             logger.info("RLS (AST): %s -> %s", query[:200], result[:200])
             return result
 
-        # AST parse succeeded but no matching table found - return as-is
+        # AST parse succeeded but no matching table found – return as-is
         return query
 
     except Exception as exc:
@@ -221,12 +221,12 @@ def apply_rls(
             query[:200],
         )
 
-    #  Regex fallback (legacy) 
+    # ── Regex fallback (legacy) ──────────────────────────────────────────
     return _apply_rls_regex(query, combined_rls)
 
 
 def _apply_rls_regex(query: str, combined_rls: str) -> str:
-    """Regex-based RLS injection - used as a fallback only."""
+    """Regex-based RLS injection – used as a fallback only."""
     where_pattern = re.compile(r"\bWHERE\b", re.IGNORECASE)
 
     if where_pattern.search(query):
@@ -277,7 +277,7 @@ def build_rich_schema_prompt(tables: List[Dict], connector_type: str = "") -> st
         
         # Gotchas
         if "gotcha" in table and table["gotcha"]:
-            lines.append(f"** Gotcha**: {table['gotcha']}\n")
+            lines.append(f"**⚠ Gotcha**: {table['gotcha']}\n")
         
         # Columns
         columns = table.get("columns", [])
